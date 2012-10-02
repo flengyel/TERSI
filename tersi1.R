@@ -67,7 +67,8 @@
 # The society matrix keeps the history of the simulation for each time step.
 # The dead profits matrix maintains only changes. Dead profits can be 
 # maintained in the society matrix with the addition of a cumulative dead
-# profits field.  Since I cannot decide, I will do both.
+# profits field.  Since I cannot decide, I will do both (TODO -- lists
+# are immutable in R, so this may tend to fragment memory.)
 
 library(methods) # use version S4 R classes
 library(bitops)  # for bitAnd
@@ -79,7 +80,7 @@ kR <- 4;   # risk pool mechanism bit
 kS <- 8;   # self-binding mechanism bit
 kI <- 16;  # information transmission mechanism bit
 
-has.mech <- function(society, mechanism) {
+HasMechanism <- function(society, mechanism) {
 # Check if society has mechanism enabled
 #
 # Args:
@@ -98,13 +99,13 @@ has.mech <- function(society, mechanism) {
 
 # Vector of column names of each cell 
 agent.colnames <- c("profit",   # agent profit 
-    "wisdom",                   # unit of information  
-    "a",                        # a crop value in cell
-    "b",                        # b crop value in cell
-    "deaths",                   # deaths in cell
-    "a.famines",                # no times a = 0
-    "b.famines",                # no times b = 0
-    "dead.profits")             # cumulative dead profits
+  "wisdom",                   # unit of information  
+  "a",                        # a crop value in cell
+  "b",                        # b crop value in cell
+  "deaths",                   # deaths in cell
+  "a.famines",                # no times a = 0
+  "b.famines",                # no times b = 0
+  "dead.profits")             # cumulative dead profits
 
 CreateAgent <- function(crop.target.start, profit=0, wisdom=1,
 			a = crop.target.start, b = crop.target.start,
@@ -119,10 +120,10 @@ CreateAgent <- function(crop.target.start, profit=0, wisdom=1,
 #   Data frame of initilized agent object, with default
 #   values and column names set.
 #   
-    df <- data.frame(profit, wisdom, a, b, deaths,
-		      a.famines, b.famines, dead.profits);
-    names(df) <- agent.colnames;
-    df
+  df <- data.frame(profit, wisdom, a, b, deaths,
+	      a.famines, b.famines, dead.profits);
+  names(df) <- agent.colnames;
+  return (df);
 }
 
 CreateSociety <- function(rows, cols, crop.target.start) {
@@ -135,13 +136,13 @@ CreateSociety <- function(rows, cols, crop.target.start) {
 #
 # Returns:
 #   rows x cols matrix of data frames of agent states.
-    soc <- matrix(data.frame(), rows, cols);
-    for (i in 1:rows) {
-        for (j in 1:cols) {
-	    soc[[i, j]] <- rbind(soc[[i, j]], CreateAgent(crop.target.start));    
-        }
+  soc <- matrix(data.frame(), rows, cols);
+  for (i in 1:rows) {
+    for (j in 1:cols) {
+      soc[[i, j]] <- rbind(soc[[i, j]], CreateAgent(crop.target.start));    
     }
-    soc
+  }
+  return (soc);
 }
 
 PushList <- function(lst, obj) {
@@ -154,41 +155,39 @@ PushList <- function(lst, obj) {
 # Returns:
 #   A new immutable list.     
 #
-    lst[[length(lst)+1]] <- obj
-    return(lst)
+  lst[[length(lst)+1]] <- obj;
+  return (lst);
 }
 
-# I might want to define a SIMULATION object and subclass the final
-# TERSI object from this, to save copying variables. The TERSI initialization
-# can then call the superclass initialization method to set the initial 
-# variables the superclass Run method to define the simulation.
-# That means running an experiment.
+# The SIMULATION class only knows how to define and run simulations.
+# Saving, loading and analyzing simulations is deferred to the
+# TERSI subclass, below.
 
 setClass("SIMULATION", representation = representation( 
-    crop.target.start = "numeric",  # Mean raised crop at beginning
-    # On average there will be famine * rainfall (verify TK)
-    max.sust.ratio = "numeric",     # maximum sustainabiilty ratio
-    # Ratio to basic target where sustainability limit sets in
-    max.harvest.ratio = "numeric",
-    # Ratio to basic target that can be harvested in the absence of
-    # economies of scale (without the cooperation of others).
-    # Limit is 4, since rainfall*wisdom can equal 4 at end of simulation 
-    # TK explain all parameter choices.
-    #
-    # The following parameters are set for all class instances.
-    # They are inaccessible to the initialize method.
-    runs = "numeric",  # number of simulation runs
-    years.per.run = "numeric",   
-    annual.wisdom.gain = "numeric",  # wisdom increase per year
-    max.rain.ratio = "numeric",      # Maximum annual rainfall 
-    max.coop.ratio = "numeric",      # TK
-    trade.ratio = "numeric",         # Maximum that can be traded
-    crop.seed.start = "numeric",     # Minimum seed crop for next year
-    wisdom.start = "numeric",        # global wisdom parameter
-    society.rows = "numeric",
-    society.cols = "numeric",
-    society.size = "numeric",
-    world.list="list"))
+  crop.target.start = "numeric",  # Mean raised crop at beginning
+  # On average there will be famine * rainfall (verify TK)
+  max.sust.ratio = "numeric",     # maximum sustainabiilty ratio
+  # Ratio to basic target where sustainability limit sets in
+  max.harvest.ratio = "numeric",
+  # Ratio to basic target that can be harvested in the absence of
+  # economies of scale (without the cooperation of others).
+  # Limit is 4, since rainfall*wisdom can equal 4 at end of simulation 
+  # TK explain all parameter choices.
+  #
+  # The following parameters are set for all class instances.
+  # They are inaccessible to the initialize method.
+  runs = "numeric",  # number of simulation runs
+  years.per.run = "numeric",   
+  annual.wisdom.gain = "numeric",  # wisdom increase per year
+  max.rain.ratio = "numeric",      # Maximum annual rainfall 
+  max.coop.ratio = "numeric",      # TK
+  trade.ratio = "numeric",         # Maximum that can be traded
+  crop.seed.start = "numeric",     # Minimum seed crop for next year
+  wisdom.start = "numeric",        # global wisdom parameter
+  society.rows = "numeric",
+  society.cols = "numeric",
+  society.size = "numeric",
+  bitmask = "numeric"))             # bitmask of cooperative benefits
 
 
 setMethod("initialize","SIMULATION", 
@@ -205,33 +204,31 @@ setMethod("initialize","SIMULATION",
 		   wisdom.start = 1,
 		   society.rows = 3,
 		   society.cols = 3) {
-    .Object@crop.target.start <- crop.target.start;
-    .Object@max.sust.ratio <- max.sust.ratio;
-    .Object@max.harvest.ratio <- max.harvest.ratio;
-    .Object@trade.ratio <- trade.ratio;
-    .Object@runs <- runs; 
-    .Object@years.per.run <- years.per.run; 
+  .Object@crop.target.start <- crop.target.start;
+  .Object@max.sust.ratio <- max.sust.ratio;
+  .Object@max.harvest.ratio <- max.harvest.ratio;
+  .Object@trade.ratio <- trade.ratio;
+  .Object@runs <- runs; 
+  .Object@years.per.run <- years.per.run; 
 
-    # Maximum Wisdom increase per year. Hundred years in total
-    # At end of simulation, will be exactly at sustainability level!
-    .Object@annual.wisdom.gain <- (max.sust.ratio - 1) / .Object@years.per.run;
+  # Maximum Wisdom increase per year. Hundred years in total
+  # At end of simulation, will be exactly at sustainability level!
+  .Object@annual.wisdom.gain <- (max.sust.ratio - 1) / .Object@years.per.run;
 
-    .Object@max.rain.ratio <- max.rain.ratio;
-    .Object@max.coop.ratio <- .Object@max.rain.ratio * max.sust.ratio;
-    # All can be lifted if cooperation is in place. This is full amount at end.
-    .Object@crop.seed.start <- crop.seed.start;  
-    # Minimum needed as seed crop for next year
-    # Wisdom Parameters. Do not change by default
-    .Object@wisdom.start <- wisdom.start; 
-    .Object@society.rows <- society.rows;
-    .Object@society.cols <- society.cols;
-    .Object@society.size <- society.rows * society.cols;  # NxN matrix
-    .Object@bitmask <- bitmask;  # This MUST be set. Non-optional.
+  .Object@max.rain.ratio <- max.rain.ratio;
+  .Object@max.coop.ratio <- .Object@max.rain.ratio * max.sust.ratio;
+  # All can be lifted if cooperation is in place. This is full amount at end.
+  .Object@crop.seed.start <- crop.seed.start;  
+  # Minimum needed as seed crop for next year
+  # Wisdom Parameters. Do not change by default
+  .Object@wisdom.start <- wisdom.start; 
+  .Object@society.rows <- society.rows;
+  .Object@society.cols <- society.cols;
+  .Object@society.size <- society.rows * society.cols;  # NxN matrix
+  .Object@bitmask <- bitmask;  # This MUST be set. Non-optional.
 
-    # (TODO) run the simulation
-
-    .Object  # return the initialized object
-})  # (initialize TERSI object)
+  .Object  # return the initialized object
+})  
 
 
 # Without setGeneric, the corresponding setMethod generates an error
@@ -257,47 +254,89 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
 #   ob: SIMULATION object
 #
 # Returns:
-#   matrix of data.frames of AGENTS. Used to define the 
-    for (i in 1:ob@runs) {
-        crop.sust.start <- ob@crop.target.start * ob@max.sust.ratio;
-        crop.coop.start <- ob@crop.target.start * ob@max.coop.ratio;
+#   Matrix of data frames of agents. Used to set the simulation history
+#   object in the TERSI subclass during its initialization.
 
-    	# Set growing parameters 
-        crop.seed <- ob@crop.seed.start;
+  # define the initial matrix of data frames of agents.	  
+  soc <- CreateSociety(ob@society.rows, ob@society.cols, 
+		       ob@crop.target.start);  
 
-        crop.target     <- ob@crop.target.start;
-        crop.sust       <- crop.sust.start;
-        global.wisdom   <- ob@wisdom.start;
+  for (i in 1:ob@runs) {
+    crop.sust.start <- ob@crop.target.start * ob@max.sust.ratio;
+    crop.coop.start <- ob@crop.target.start * ob@max.coop.ratio;
 
-        a.seed.exists   <- 1;  # Doesn't get cut off in first run
-        b.seed.exists   <- 1; 
+    # Set growing parameters 
+    crop.seed <- ob@crop.seed.start;
+
+    crop.target     <- ob@crop.target.start;
+    crop.sust       <- crop.sust.start;
+    global.wisdom   <- ob@wisdom.start;
+
+    a.seed.exists   <- 1;  # Doesn't get cut off in first run
+    b.seed.exists   <- 1; 
 
 
-        # Simulate each world for a lifetime 
-        for (year in 1:ob@years.per.run) {
-            global.wisdom <- global.wisdom + ob@annual.wisdom.gain;
+    # Simulate each world for a lifetime 
+    for (year in 1:ob@years.per.run) {
+      global.wisdom <- global.wisdom + ob@annual.wisdom.gain;
 
-            # As wisdom grows, sustainable crops must also grow
-            crop.target <- ob@crop.target.start * global.wisdom;
-            crop.sust   <- crop.sust.start * global.wisdom;
-            crop.coop   <- crop.coop.start * global.wisdom;
+      # As wisdom grows, sustainable crops must also grow
+      crop.target <- ob@crop.target.start * global.wisdom;
+      crop.sust   <- crop.sust.start * global.wisdom;
+      crop.coop   <- crop.coop.start * global.wisdom;
             
-	    # TK JaKke writes, "question on this."
-	    # Probably because the initialized value above is overwritten here.
-	    crop.seed   <- ob@crop.seed.start * global.wisdom;  
+      # TK JaKke writes, "question on this."
+      # Probably because the initialized value above is overwritten here.
+      crop.seed   <- ob@crop.seed.start * global.wisdom;  
 
 
-	    # Define rainfall matrices for all societies
-            a.rainfall  <- runif(ob@world.rows, ob@world.cols) 
-	                         * ob@max.rain.ratio;  
-            b.rainfall  <- runif(ob@world.rows, ob@world.cols) 
-	                         * ob@max.rain.ratio;  
+      # Define rainfall matrices for all societies
+      # This is a benefit of simulating all 32 societies at once:
+      # environmental conditions are controlled for
+      a.rainfall  <- matrix(runif(ob@society.size), 
+				  ob@society.rows,
+				  ob@society.cols); 
+	                           
+      b.rainfall  <- matrix(runif(ob@society.size), 
+				  ob@society.rows,
+				  ob@society.cols); 
+	                           
 
 
-            # I mechanism. Wisdom increases before new crop is grown.
-            # This is divided in different ways depending on contract
-            i.flag  <- hasMechanism(ob@bitmask, kI);
+      # I mechanism. Wisdom increases before new crop is grown.
+      # This is divided in different ways depending on contract
+      i.flag  <- HasMechanism(ob@bitmask, kI);
             
-	}
     }
+  }
+  return (soc); 
 }) # (method {function})
+
+
+# The TERSI class is intended for the analysis of simulations. 
+# By default, the initialization calls the  Simulate method of 
+# the SIMULATION superclass to create a new simulation to analyze. 
+# Adding the filename argument to the class initialize method
+# new("TERSI", filename) precomputed simulations to be loaded.
+# The SIMULATION class doesn't load, save or analyze any 
+# simulations. It only knows how to define and create them.
+# Saving, loading and analyzing simulations is delegated to
+# the TERSI subclass.
+
+setClass("TERSI", contains = "SIMULATION",
+	 representation = representation(society.matrix = "matrix"))
+
+setMethod("initialize","TERSI", function(.Object, filename="") {
+  # SIMULATION superclass not yet initialized, so initialize it
+  .Object <- callNextMethod(.Object);  # initialize superclass object
+  if (filename == "") {
+    print("Running simulation.")
+    .Object@society.matrix <- Simulate(.Object); # set the simulation
+  }
+  else {
+    print("Loading pre-computed simulation.");
+    .Object@society.matrix <- matrix();  # do nothing for now
+  }
+  return (.Object);  # return the initialized object
+}) 
+
