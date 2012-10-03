@@ -1,6 +1,6 @@
 # Translation of Jakke Makela's TERSI simulation to R. 
 #
-# Translation by Florian Lengyel. 
+# Translation by Florian Lengyel. Sept-Oct 2012
 
 # The simulation is motivated by Joseph Heath's  typology of mechanisms of 
 # cooperative benefit (Heath, Joseph. The Benefits of Cooperation. 
@@ -26,49 +26,9 @@
 # purely functional data structures (Chris Okasaki. Purely Functional
 # Data Structures. Cambridge University Press, Jun 13, 1999). S4 objects
 # require replacement methods to update a new copy of the original object
-# for each slot that is updated. Creating new immutable objects by copying 
-# old ones whenever an agent changes state is less efficient than appending 
-# to an existing data structure (useful for maintaining the history of 
-# state changes of an agent). Appending to an existing data structure such 
-# as data frame is less space and time  efficient than destructive assignment, 
-# which S4 objects do not support.  Exploring purely functional data 
-# structures in R is left as an exercise for the future. R does support 
-# appending a new row to a data frame through the rbind() call. Our use of 
-# rbind() will probably land us in the Second Circle of the R Inferno, unless
-# we can allocate the entire data structure from the beginning.
+# for each slot that is updated. 
 #
 # Addition: Class names are all UPPERCASE.
-#
-# DATA STRUCTURES
-# This translation uses data structures appropriate to R.
-# Only one society at a time is simulated -- this should facilitate
-# parallel processing, since the 32 societies are independent.
-#
-# The data structures include:
-#
-# 1. An S4 class called TERSI that contains the parameters that define the 
-# simulation, the R data structures that maintain the history of the 
-# simulation, and strings and constants useful for the analysis and display
-# of a simulation. The simulation is run when the TERSI object is created,
-# within the initialization method of the class.
-#
-# 2. Simulation matrices. 
-# 2a. Society matrix. A matrix of data frames of the state of each agent. 
-#     Matrices of data frames were chosen for ease of implementation:
-#        m <- matrix(data.frame(), society.rows, society.cols)
-#     Individual cells can be updated (all values must be assembled at once)
-#        m[[2,1]] <- rbind(m[[2,1]], c(1.2, 4, -1, 2.2, 0)
-#     Cells can be assigned names
-#        names(m[[2,1]]) <- c("profit", "wisdom", "a", "b", "a.famines")
-# 2b. Dead profit matrix. A matrix of lists of "dead profits" accumulated 
-#     by agents that go bankrupt during the simulation. The sum of the 
-#     lengths of the lists is the number of deaths. 
-
-# The society matrix keeps the history of the simulation for each time step.
-# The dead profits matrix maintains only changes. Dead profits can be 
-# maintained in the society matrix with the addition of a cumulative dead
-# profits field.  Since I cannot decide, I will do both (TODO -- lists
-# are immutable in R, so this may tend to fragment memory.)
 
 library(methods) # use version S4 R classes
 library(bitops)  # for bitAnd
@@ -80,8 +40,11 @@ kR <- 4;   # risk pool mechanism bit
 kS <- 8;   # self-binding mechanism bit
 kI <- 16;  # information transmission mechanism bit
 
+kAgents    <-  9;  # number of agents per society
+kSocieties <- 32;  # number of societies
+
 HasMechanism <- function(society, mechanism) {
-# Check if society has mechanism enabled
+# Check if society has one of the five mechanisms of cooperative benefit enabled
 #
 # Args:
 #   society: number of society 1:32
@@ -91,59 +54,46 @@ HasMechanism <- function(society, mechanism) {
 #   True iff mechanism bit equals 1 in society-1
     bitAnd(society-1,mechanism)==1;}
 
-# A society is a 3x3 matrix consisting of data frames, called a cell. 
-# Each cell represents the state of an agent, one state per row.   
-# The bitmask of mechanisms of cooperative benefits enabled  for the
-# society to which the agent belongs is contained in the TERSI object
-# for the simulation.
 
-# Vector of column names of each cell 
-agent.colnames <- c("profit",   # agent profit 
-  "wisdom",                   # unit of information  
-  "a",                        # a crop value in cell
-  "b",                        # b crop value in cell
-  "deaths",                   # deaths in cell
-  "a.famines",                # no times a = 0
-  "b.famines",                # no times b = 0
-  "dead.profits")             # cumulative dead profits
 
-CreateAgent <- function(crop.target.start, profit=0, wisdom=1,
-			a = crop.target.start, b = crop.target.start,
-			deaths=0, a.famines=0, b.famines=0, 
-			dead.profits=0) {
-# Set the initial state of a TERSI agent.
+InitSocietyState <- function(crop.target.start, profit=0, wisdom=1,
+			                       a = crop.target.start, b = crop.target.start,
+			                       deaths=0, a.famines=0, b.famines=0, 
+			                       dead.profits=0) {
+# Set the initial society state of a the simulation.
 
 # Args:
 #   crop.target.start: initial value of a and b crops.
 #
 # Returns: 
-#   Data frame of initilized agent object, with default
-#   values and column names set.
-#   
-  df <- data.frame(profit, wisdom, a, b, deaths,
-	      a.famines, b.famines, dead.profits);
-  names(df) <- agent.colnames;
-  return (df);
+#   The society.state data structure.
+#   For efficiency, the society state is a list of preallocatted
+#   matrices of two types: agent state matrices and society state vectors.
+#   An agent state matrix has dimensions kSocieties x kAgents. 
+#   The agent state matrices are profit, wisdom, a and b.
+#   The society state vectors have length kSocieties.
+#   The society state is reset at the beginning of the simulation.
+
+  # define agent state matrices
+  agent.profit <- matrix(profit , kSocieties, kAgents)
+  agent.wisdom <- matrix(wisdom, kSocieties, kAgents)
+  agent.a      <- matrix(crop.target.start, kSocieties, kAgents)
+  agent.b      <- matrix(crop.target.start, kSocieties, kAgents)
+  
+  # define society state vectors (these are 1 x kSocieties matrices)
+  society.deaths       <- matrix(0, 1, kSocieties);
+  society.a.famines    <- matrix(0, 1, kSocieties);
+  society.b.famines    <- matrix(0, 1,  kSocieties);
+  society.dead.profit  <- matrix(0, 1, kSocieties);
+  
+  # set names of fields
+  state <- list(profit = agent.profit, wisdom = agent.wisdom, a = agent.a, b = agent.b, 
+            deaths = society.deaths, a.famines = society.a.famines, 
+            b.famines = society.b.famines,  dead.profit = society.dead.profit);
+
+  return (state);
 }
 
-CreateSociety <- function(rows, cols, crop.target.start) {
-# create rows x cols matrix of agents
-#
-# Args:
-#   crop.target.start: initial value of a and b crops
-#   rows: self explanatory
-#   cols: ditto
-#
-# Returns:
-#   rows x cols matrix of data frames of agent states.
-  soc <- matrix(data.frame(), rows, cols);
-  for (i in 1:rows) {
-    for (j in 1:cols) {
-      soc[[i, j]] <- rbind(soc[[i, j]], CreateAgent(crop.target.start));    
-    }
-  }
-  return (soc);
-}
 
 PushList <- function(lst, obj) {
 # push an object onto an immutable list
@@ -184,15 +134,12 @@ setClass("SIMULATION", representation = representation(
   trade.ratio = "numeric",         # Maximum that can be traded
   crop.seed.start = "numeric",     # Minimum seed crop for next year
   wisdom.start = "numeric",        # global wisdom parameter
-  society.rows = "numeric",
-  society.cols = "numeric",
-  society.size = "numeric",
-  bitmask = "numeric"))             # bitmask of cooperative benefits
+  agents = "numeric",      # number of agents in society
+  societies = "numeric"))          # number of societies
 
 
 setMethod("initialize","SIMULATION", 
 	  function(.Object, 
-		   bitmask = 0, # TERSI bitmask
 		   crop.target.start = 10, 
                    max.sust.ratio = 1.3, 
 		   max.harvest.ratio = 1.5,
@@ -202,8 +149,7 @@ setMethod("initialize","SIMULATION",
 		   max.rain.ratio = 2,
 		   crop.seed.start = 1,
 		   wisdom.start = 1,
-		   society.rows = 3,
-		   society.cols = 3) {
+		   agents = 9) {
   .Object@crop.target.start <- crop.target.start;
   .Object@max.sust.ratio <- max.sust.ratio;
   .Object@max.harvest.ratio <- max.harvest.ratio;
@@ -211,21 +157,19 @@ setMethod("initialize","SIMULATION",
   .Object@runs <- runs; 
   .Object@years.per.run <- years.per.run; 
 
-  # Maximum Wisdom increase per year. Hundred years in total
-  # At end of simulation, will be exactly at sustainability level!
+   # Maximum Wisdom increase per year. Hundred years in total
+   # At end of simulation, will be exactly at sustainability level!
   .Object@annual.wisdom.gain <- (max.sust.ratio - 1) / .Object@years.per.run;
 
   .Object@max.rain.ratio <- max.rain.ratio;
   .Object@max.coop.ratio <- .Object@max.rain.ratio * max.sust.ratio;
-  # All can be lifted if cooperation is in place. This is full amount at end.
+   # All can be lifted if cooperation is in place. This is full amount at end.
   .Object@crop.seed.start <- crop.seed.start;  
-  # Minimum needed as seed crop for next year
-  # Wisdom Parameters. Do not change by default
+   # Minimum needed as seed crop for next year
+   # Wisdom Parameters. Do not change by default
   .Object@wisdom.start <- wisdom.start; 
-  .Object@society.rows <- society.rows;
-  .Object@society.cols <- society.cols;
-  .Object@society.size <- society.rows * society.cols;  # NxN matrix
-  .Object@bitmask <- bitmask;  # This MUST be set. Non-optional.
+  .Object@agents  <- agents;        # number of agents 9 to begin with
+  .Object@societies <- kSocieties;  # Set number of societies (32)
 
   .Object  # return the initialized object
 })  
@@ -254,14 +198,24 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
 #   ob: SIMULATION object
 #
 # Returns:
-#   Matrix of data frames of agents. Used to set the simulation history
-#   object in the TERSI subclass during its initialization.
+# List of simulation summary parameters
 
-  # define the initial matrix of data frames of agents.	  
-  soc <- CreateSociety(ob@society.rows, ob@society.cols, 
-		       ob@crop.target.start);  
-
+  # Preallocate descriptive statistic matrices. Each is a runs x societies matrix
+  
+  current.profit <- matrix(0, ob@runs, ob@societies)  # profit in each run
+  deaths         <- matrix(0, ob@runs, ob@societies)  # deaths per run
+  dead.profit    <- matrix(0, ob@runs, ob@societies)  # profits of those who failed
+  a.famines      <- matrix(0, ob@runs, ob@societies)  # number of a crop famines
+  b.famines      <- matrix(0, ob@runs, ob@societies)  # ditto
+  
   for (i in 1:ob@runs) {
+    
+    # set the initial society state for all societies
+    state <- InitSocietyState(crop.target.start);  
+  
+    # Define the environment for all societies. 
+    # This is to change as little as necessary across societies
+    # as the mechanisms of cooperative benefit change
     crop.sust.start <- ob@crop.target.start * ob@max.sust.ratio;
     crop.coop.start <- ob@crop.target.start * ob@max.coop.ratio;
 
@@ -272,8 +226,8 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
     crop.sust       <- crop.sust.start;
     global.wisdom   <- ob@wisdom.start;
 
-    a.seed.exists   <- 1;  # Doesn't get cut off in first run
-    b.seed.exists   <- 1; 
+    a.seed.exists   <- matrix(TRUE, 1, kAgents)  # Doesn't get cut off in first run
+    b.seed.exists   <- matrix(TRUE, 1, kAgents)  # for consistency 
 
 
     # Simulate each world for a lifetime 
@@ -284,32 +238,92 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
       crop.target <- ob@crop.target.start * global.wisdom;
       crop.sust   <- crop.sust.start * global.wisdom;
       crop.coop   <- crop.coop.start * global.wisdom;
-            
-      # TK JaKke writes, "question on this."
-      # Probably because the initialized value above is overwritten here.
       crop.seed   <- ob@crop.seed.start * global.wisdom;  
 
 
       # Define rainfall matrices for all societies
       # This is a benefit of simulating all 32 societies at once:
       # environmental conditions are controlled for
-      a.rainfall  <- matrix(runif(ob@society.size), 
-				  ob@society.rows,
-				  ob@society.cols); 
-	                           
-      b.rainfall  <- matrix(runif(ob@society.size), 
-				  ob@society.rows,
-				  ob@society.cols); 
-	                           
-
-
-      # I mechanism. Wisdom increases before new crop is grown.
-      # This is divided in different ways depending on contract
-      i.flag  <- HasMechanism(ob@bitmask, kI);
-            
-    }
-  }
-  return (soc); 
+      a.rainfall  <- matrix(runif(ob@agents), 1, ob@agents) * max.rain.ratio; 
+      b.rainfall  <- matrix(runif(ob@agents), 1, ob@agents) * max.rain.ratio; 
+				                     
+      for (soc in 1:ob@societies) {
+        # Information transmission
+        i.flag  <- HasMechanism(soc, kI);  
+        state$wisdom[[soc]] <- IMechanism( state$wisdom[[soc]], annual.wisdom.gain, i.flag );
+        
+        # Grow crops
+        state$a[[soc]] <- a.rainfall * state$wisdom[[soc]]  * a.seed.exists * crop.target;
+        state$b[[soc]] <- b.rainfall * state$wisdom[[soc]]  * b.seed.exists * crop.target;
+        
+        # Calculate famines (the summation trick to turn TRUE to 1 works in MATLAB and R!)
+        state$a.famines[[soc]] <- state$a.famines[[soc]] + sum(a.seed.exists == 0);
+        state$b.famines[[soc]] <- state$b.famines[[soc]] + sum(b.seed.exists == 0);
+      
+        # Economies of scale
+        e.flag <- HasMechanism(soc, kE);
+        crop.weight <- crop.target * max.harvest.ratio;
+        state$a[[soc]] <- EMechanism( state$a[[soc]], crop.weight, e.flag )
+        state$b[[soc]] <- EMechanism( state$b[[soc]], crop.weight, e.flag )
+        
+        # Self binding. If some fields have unsustainable yield, we have a tragedy
+        # of the commons and have to decrease the other fields.
+        s.flag <- HasMechanism(soc, kS);
+        state$a[[soc]] <- SMechanism(state$a[[soc]], crop.sust, s.flag )
+        state$b[[soc]] <- SMechanism(state$b[[soc]], crop.sust, s.flag )
+        
+        # Risk pool mechanism. The insurance adjustor shows up only if present
+        if (HasMechanism(soc, kR)) {
+          state$a[[soc]] <- RMechanism( state$a[[soc]], crop.seed )
+          state$b[[soc]] <- RMechanism( state$b[[soc]], crop.seed )          
+        }
+        
+        # Gain from trade. Markets exist only if this mechanism is present
+        if (HasMechanism(soc, kT)) { 
+          # NOTE: this is an expensive copy operation! Leave it for now. You
+          # may want to use the oo style of objects to pass the state object
+          # by reference. This gives three styles: S3, S4 and oo. 
+          state <- TMechanism( state, crop.seed, trade.ratio )
+        }
+        
+        # profit
+        # NOTE: this is another expensive copy operation
+        state$profit[[soc]] <- state$profit[[soc]] + ComputeProfit(state, crop.seed)
+      
+        # Bury the dead
+        a.seed.exists <- state$a[soc, ] >= crop.seed  # boolean vector
+        b.seed.exists <- state$b[soc, ] >= crop.seed  # boolean vector
+        dead.agents <- which( ! (a.seed.exists | b.seed.exists) ); # index the dead
+        
+        if (length(dead.agents) > 0) { 
+           for (corpse in dead.agents) {  
+             # Crucifixus 
+             state$deaths[[soc]] <- state$deaths[[soc]] + 1;  
+             # He was crucified under Pontius Pilate. 
+             state$dead.profit[[soc]] <- state$dead.profit[[soc]] + state$profit[[soc,corpse]]
+             # He suffered and was buried.
+             state$profit[[soc, corpse]] <- 0   # the dead go fast
+             # reset the crops to the crop.target for the next farmer
+             state$a[[soc, corpse]] <- crop.target;
+             state$b[[soc, corpse]] <- crop.target;
+             # leave the wisdom intact. JM says this is for simplicity
+             a.seed.exists[[corpse]] <- TRUE;  # Et Resurrexit!
+             b.seed.exists[[corpse]] <- TRUE;  
+          }  # for           
+        }  # if
+       
+        # Keep the descriptive statistics
+        # TODO(we may want the histograpms of the farmer's profits at the end)
+        current.profit[[run, soc]] <- sum(state$profit[[soc]])
+        deaths[[run, soc]]         <- state$deaths[[soc]]
+        dead.profit[[run, soc]]    <- state$dead.profit[[soc]]
+        a.famines[[run, soc]]      <- state$a.famines[[soc]]               
+        b.famines[[run, soc]]      <- state$b.famines[[soc]]
+      } # for each society            
+    } # for years.per.run
+  }  # for runs
+  return (list(current.profit = current.profit, deaths = deaths, dead.profit = dead.profit, 
+               a.famines = a.famines, b.famines = b.famines)) 
 }) # (method {function})
 
 
@@ -324,17 +338,17 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
 # the TERSI subclass.
 
 setClass("TERSI", contains = "SIMULATION",
-	 representation = representation(society.matrix = "matrix"))
+	 representation = representation(stats = "list"))
 
 setMethod("initialize","TERSI", function(.Object, filename="") {
   # SIMULATION superclass not yet initialized, so initialize it
   .Object <- callNextMethod(.Object);  # initialize superclass object
   if (filename == "") {
     print("Running simulation.")
-    .Object@society.matrix <- Simulate(.Object); # set the simulation
+    .Object@stats <- Simulate(.Object); # set the simulation statistics
   }
   else {
-    print("Loading pre-computed simulation.");
+    print("Loading pre-computed simulation statistics.");
     .Object@society.matrix <- matrix();  # do nothing for now
   }
   return (.Object);  # return the initialized object
