@@ -21,12 +21,12 @@
 # The Google Style Guide recommends using S3 classes instead of S4 classes 
 # unless there is a justification. My justification for using them is 
 # that I know more about S4 classes than S3 classes. They are used to store
-# simulation parmeters and completed simulations. However, S4 class objects
+# simulation parmeters and completed simulations. S4 class objects
 # are immutable and R does not currently provide intrinsic support for 
 # purely functional data structures (Chris Okasaki. Purely Functional
 # Data Structures. Cambridge University Press, Jun 13, 1999). S4 objects
 # require replacement methods to update a new copy of the original object
-# for each slot that is updated. 
+# for each slot that is updated. But they are useful for storing simulations.
 #
 # Addition: Class names are all UPPERCASE.
 
@@ -208,10 +208,10 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
   a.famines      <- matrix(0, ob@runs, ob@societies)  # number of a crop famines
   b.famines      <- matrix(0, ob@runs, ob@societies)  # ditto
   
-  for (i in 1:ob@runs) {
+  for (run in 1:ob@runs) {
     
     # set the initial society state for all societies
-    state <- InitSocietyState(crop.target.start);  
+    state <- InitSocietyState(ob@crop.target.start);  
   
     # Define the environment for all societies. 
     # This is to change as little as necessary across societies
@@ -244,17 +244,17 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
       # Define rainfall matrices for all societies
       # This is a benefit of simulating all 32 societies at once:
       # environmental conditions are controlled for
-      a.rainfall  <- matrix(runif(ob@agents), 1, ob@agents) * max.rain.ratio; 
-      b.rainfall  <- matrix(runif(ob@agents), 1, ob@agents) * max.rain.ratio; 
+      a.rainfall  <- matrix(runif(ob@agents), 1, ob@agents) * ob@max.rain.ratio; 
+      b.rainfall  <- matrix(runif(ob@agents), 1, ob@agents) * ob@max.rain.ratio; 
 				                     
       for (soc in 1:ob@societies) {
         # Information transmission
         i.flag  <- HasMechanism(soc, kI);  
-        state$wisdom[[soc]] <- IMechanism( state$wisdom[[soc]], annual.wisdom.gain, i.flag );
+        state$wisdom[soc, ] <- IMechanism( state$wisdom[soc, ], annual.wisdom.gain, i.flag );
         
         # Grow crops
-        state$a[[soc]] <- a.rainfall * state$wisdom[[soc]]  * a.seed.exists * crop.target;
-        state$b[[soc]] <- b.rainfall * state$wisdom[[soc]]  * b.seed.exists * crop.target;
+        state$a[soc, ] <- a.rainfall * state$wisdom[soc, ]  * a.seed.exists * crop.target;
+        state$b[soc, ] <- b.rainfall * state$wisdom[soc, ]  * b.seed.exists * crop.target;
         
         # Calculate famines (the summation trick to turn TRUE to 1 works in MATLAB and R!)
         state$a.famines[[soc]] <- state$a.famines[[soc]] + sum(a.seed.exists == 0);
@@ -262,20 +262,20 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
       
         # Economies of scale
         e.flag <- HasMechanism(soc, kE);
-        crop.weight <- crop.target * max.harvest.ratio;
-        state$a[[soc]] <- EMechanism( state$a[[soc]], crop.weight, e.flag )
-        state$b[[soc]] <- EMechanism( state$b[[soc]], crop.weight, e.flag )
+        crop.weight <- crop.target * ob@max.harvest.ratio;
+        state$a[soc, ] <- EMechanism( state$a[soc, ], crop.weight, e.flag )
+        state$b[soc, ] <- EMechanism( state$b[soc, ], crop.weight, e.flag )
         
         # Self binding. If some fields have unsustainable yield, we have a tragedy
         # of the commons and have to decrease the other fields.
         s.flag <- HasMechanism(soc, kS);
-        state$a[[soc]] <- SMechanism(state$a[[soc]], crop.sust, s.flag )
-        state$b[[soc]] <- SMechanism(state$b[[soc]], crop.sust, s.flag )
+        state$a[soc, ] <- SMechanism(state$a[soc, ], crop.sust, s.flag )
+        state$b[soc, ] <- SMechanism(state$b[soc, ], crop.sust, s.flag )
         
         # Risk pool mechanism. The insurance adjustor shows up only if present
         if (HasMechanism(soc, kR)) {
-          state$a[[soc]] <- RMechanism( state$a[[soc]], crop.seed )
-          state$b[[soc]] <- RMechanism( state$b[[soc]], crop.seed )          
+          state$a[soc, ] <- RMechanism( state$a[soc, ], crop.seed )
+          state$b[soc, ] <- RMechanism( state$b[soc, ], crop.seed )          
         }
         
         # Gain from trade. Markets exist only if this mechanism is present
@@ -288,7 +288,7 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         
         # profit
         # NOTE: this is another expensive copy operation
-        state$profit[[soc]] <- state$profit[[soc]] + ComputeProfit(state, crop.seed)
+        state$profit[soc, ] <- state$profit[soc, ] + ComputeProfit(state, crop.seed)
       
         # Bury the dead
         a.seed.exists <- state$a[soc, ] >= crop.seed  # boolean vector
