@@ -314,7 +314,7 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
        
         # Keep the descriptive statistics
         # TODO(we may want the histograpms of the farmer's profits at the end)
-        current.profit[[run, soc]] <- sum(state$profit[[soc]])
+        current.profit[[run, soc]] <- sum(state$profit[soc, ])
         deaths[[run, soc]]         <- state$deaths[[soc]]
         dead.profit[[run, soc]]    <- state$dead.profit[[soc]]
         a.famines[[run, soc]]      <- state$a.famines[[soc]]               
