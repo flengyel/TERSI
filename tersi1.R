@@ -33,15 +33,8 @@
 library(methods) # use version S4 R classes
 library(bitops)  # for bitAnd
 
-# The TERSI constants (constants are camelCase beginning with k)
-kT <- 1;   # gain from trade mechanism bit
-kE <- 2;   # economies of scale mechanism bit
-kR <- 4;   # risk pool mechanism bit
-kS <- 8;   # self-binding mechanism bit
-kI <- 16;  # information transmission mechanism bit
+source("Mechanism.R")  # load R.oo MECHANISM class and constants
 
-kAgents    <-  9;  # number of agents per society
-kSocieties <- 32;  # number of societies
 
 HasMechanism <- function(society, mechanism) {
 # Check if society has one of the five mechanisms of cooperative benefit enabled
@@ -53,7 +46,6 @@ HasMechanism <- function(society, mechanism) {
 # Returns:
 #   True iff mechanism bit equals 1 in society-1
     bitAnd(society-1,mechanism)==1;}
-
 
 
 InitSocietyState <- function(crop.target.start, profit=0, wisdom=1,
@@ -73,7 +65,15 @@ InitSocietyState <- function(crop.target.start, profit=0, wisdom=1,
 #   The agent state matrices are profit, wisdom, a and b.
 #   The society state vectors have length kSocieties.
 #   The society state is reset at the beginning of the simulation.
-
+#
+# NOTE: We may want to pass the state by reference, which means introducing
+# R.oo. The function InitSocietyState() below looks like a constructor.
+# The mechanisms of cooperative benefit act on it. The SIMULATION state 
+# might as well be a MECHANISM class. This does mix S4 and R.oo style classes,
+# but the S4 classes are immutable and require replacement methods. They are
+# used for defining "frozen" simulations with their parameters. The R.oo classes
+# implement state changes.
+  
   # define agent state matrices
   agent.profit <- matrix(profit , kSocieties, kAgents)
   agent.wisdom <- matrix(wisdom, kSocieties, kAgents)
@@ -95,19 +95,6 @@ InitSocietyState <- function(crop.target.start, profit=0, wisdom=1,
 }
 
 
-PushList <- function(lst, obj) {
-# push an object onto an immutable list
-#
-# Args:
-#   lst: an R list
-#   obj: an object
-#
-# Returns:
-#   A new immutable list.     
-#
-  lst[[length(lst)+1]] <- obj;
-  return (lst);
-}
 
 # The SIMULATION class only knows how to define and run simulations.
 # Saving, loading and analyzing simulations is deferred to the
@@ -175,18 +162,6 @@ setMethod("initialize","SIMULATION",
 })  
 
 
-# Without setGeneric, the corresponding setMethod generates an error
-# Error in setMethod("DivideWisdom", signature = signature(ob = "TERSI"),  : 
-#  no existing definition for function ‘DivideWisdom’
-# The variable 'ob' in setGeneric MUST match
-# the corresponding setMethod
-
-#setGeneric("DivideWisdom", function(ob, ...) standardGeneric("DivideWisdom"))
-
-#setMethod("DivideWisdom", signature=signature(ob="TERSI"), definition=function(ob, soc) {
-#  society <- ob@world.list[[soc]]  # get society
-#  society
-#})
 
 
 setGeneric("Simulate", function(ob, ...) standardGeneric("Simulate"))
@@ -203,15 +178,19 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
   # Preallocate descriptive statistic matrices. Each is a runs x societies matrix
   
   current.profit <- matrix(0, ob@runs, ob@societies)  # profit in each run
+  max.profit     <- matrix(0, ob@runs, ob@societies)  # max profit in each run
+  min.profit     <- matrix(0, ob@runs, ob@societies)  # min profit/society in each run
   deaths         <- matrix(0, ob@runs, ob@societies)  # deaths per run
   dead.profit    <- matrix(0, ob@runs, ob@societies)  # profits of those who failed
   a.famines      <- matrix(0, ob@runs, ob@societies)  # number of a crop famines
   b.famines      <- matrix(0, ob@runs, ob@societies)  # ditto
   
+  # we should have histograms also.
+  
   for (run in 1:ob@runs) {
     
     # set the initial society state for all societies
-    state <- InitSocietyState(ob@crop.target.start);  
+    state <- MECHANISM(crop.target.start = ob@crop.target.start);  
   
     # Define the environment for all societies. 
     # This is to change as little as necessary across societies
@@ -249,63 +228,50 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
 				                     
       for (soc in 1:ob@societies) {
         # Information transmission
-        i.flag  <- HasMechanism(soc, kI);  
-        state$wisdom[soc, ] <- IMechanism( state$wisdom[soc, ], annual.wisdom.gain, i.flag );
+        InfoTransmission(state, soc, annual.wisdom.gain)
         
-        # Grow crops
-        state$a[soc, ] <- a.rainfall * state$wisdom[soc, ]  * a.seed.exists * crop.target;
-        state$b[soc, ] <- b.rainfall * state$wisdom[soc, ]  * b.seed.exists * crop.target;
+        
+        # Grow crops (note the RCC violation in the use of private data fields)
+        state$.a[soc, ] <- a.rainfall * state$.wisdom[soc, ]  * a.seed.exists * crop.target;
+        state$.b[soc, ] <- b.rainfall * state$.wisdom[soc, ]  * b.seed.exists * crop.target;
         
         # Calculate famines (the summation trick to turn TRUE to 1 works in MATLAB and R!)
-        state$a.famines[[soc]] <- state$a.famines[[soc]] + sum(a.seed.exists == 0);
-        state$b.famines[[soc]] <- state$b.famines[[soc]] + sum(b.seed.exists == 0);
+        state$.a.famines[[soc]] <- state$.a.famines[[soc]] + sum(a.seed.exists == 0);
+        state$.b.famines[[soc]] <- state$.b.famines[[soc]] + sum(b.seed.exists == 0);
       
         # Economies of scale
-        e.flag <- HasMechanism(soc, kE);
         crop.weight <- crop.target * ob@max.harvest.ratio;
-        state$a[soc, ] <- EMechanism( state$a[soc, ], crop.weight, e.flag )
-        state$b[soc, ] <- EMechanism( state$b[soc, ], crop.weight, e.flag )
+        EconomiesOfScale(state, soc, crop.weight)
         
         # Self binding. If some fields have unsustainable yield, we have a tragedy
         # of the commons and have to decrease the other fields.
-        s.flag <- HasMechanism(soc, kS);
-        state$a[soc, ] <- SMechanism(state$a[soc, ], crop.sust, s.flag )
-        state$b[soc, ] <- SMechanism(state$b[soc, ], crop.sust, s.flag )
+        SelfBinding(state, soc, crop.sust)
         
         # Risk pool mechanism. The insurance adjustor shows up only if present
-        if (HasMechanism(soc, kR)) {
-          state$a[soc, ] <- RMechanism( state$a[soc, ], crop.seed )
-          state$b[soc, ] <- RMechanism( state$b[soc, ], crop.seed )          
-        }
+        RiskPooling(state, soc, crop.seed)
         
         # Gain from trade. Markets exist only if this mechanism is present
-        if (HasMechanism(soc, kT)) { 
-          # NOTE: this is an expensive copy operation! Leave it for now. You
-          # may want to use the oo style of objects to pass the state object
-          # by reference. This gives three styles: S3, S4 and oo. 
-          state <- TMechanism( state, crop.seed, trade.ratio )
-        }
+        GainFromTrade(state, soc)
         
         # profit
-        # NOTE: this is another expensive copy operation
-        state$profit[soc, ] <- state$profit[soc, ] + ComputeProfit(state, crop.seed)
+        ComputeProfit(state, soc, crop.seed)
       
         # Bury the dead
-        a.seed.exists <- state$a[soc, ] >= crop.seed  # boolean vector
-        b.seed.exists <- state$b[soc, ] >= crop.seed  # boolean vector
+        a.seed.exists <- state$.a[soc, ] >= crop.seed  # boolean vector
+        b.seed.exists <- state$.b[soc, ] >= crop.seed  # boolean vector
         dead.agents <- which( ! (a.seed.exists | b.seed.exists) ); # index the dead
         
         if (length(dead.agents) > 0) { 
            for (corpse in dead.agents) {  
              # Crucifixus 
-             state$deaths[[soc]] <- state$deaths[[soc]] + 1;  
+             state$.deaths[[soc]] <- state$.deaths[[soc]] + 1;  
              # He was crucified under Pontius Pilate. 
-             state$dead.profit[[soc]] <- state$dead.profit[[soc]] + state$profit[[soc,corpse]]
+             state$.dead.profit[[soc]] <- state$.dead.profit[[soc]] + state$.profit[[soc,corpse]]
              # He suffered and was buried.
-             state$profit[[soc, corpse]] <- 0   # the dead go fast
+             state$.profit[[soc, corpse]] <- 0   # the dead go fast
              # reset the crops to the crop.target for the next farmer
-             state$a[[soc, corpse]] <- crop.target;
-             state$b[[soc, corpse]] <- crop.target;
+             state$.a[[soc, corpse]] <- crop.target;
+             state$.b[[soc, corpse]] <- crop.target;
              # leave the wisdom intact. JM says this is for simplicity
              a.seed.exists[[corpse]] <- TRUE;  # Et Resurrexit!
              b.seed.exists[[corpse]] <- TRUE;  
@@ -314,16 +280,23 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
        
         # Keep the descriptive statistics
         # TODO(we may want the histograpms of the farmer's profits at the end)
-        current.profit[[run, soc]] <- sum(state$profit[soc, ])
-        deaths[[run, soc]]         <- state$deaths[[soc]]
-        dead.profit[[run, soc]]    <- state$dead.profit[[soc]]
-        a.famines[[run, soc]]      <- state$a.famines[[soc]]               
-        b.famines[[run, soc]]      <- state$b.famines[[soc]]
+        current.profit[[run, soc]] <- sum(state$.profit[soc, ])
+        max.profit[[run, soc]]     <- max(state$.profit[soc, ])
+        min.profit[[run, soc]]     <- min(state$.profit[soc, ])
+        deaths[[run, soc]]         <- state$.deaths[[soc]]
+        dead.profit[[run, soc]]    <- state$.dead.profit[[soc]]
+        a.famines[[run, soc]]      <- state$.a.famines[[soc]]               
+        b.famines[[run, soc]]      <- state$.b.famines[[soc]]
       } # for each society            
     } # for years.per.run
   }  # for runs
-  return (list(current.profit = current.profit, deaths = deaths, dead.profit = dead.profit, 
-               a.famines = a.famines, b.famines = b.famines)) 
+  return (list(current.profit = current.profit, 
+               max.profit = max.profit,
+               min.profit = min.profit,
+               deaths = deaths, 
+               dead.profit = dead.profit, 
+               a.famines = a.famines, 
+               b.famines = b.famines)) 
 }) # (method {function})
 
 
