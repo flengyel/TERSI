@@ -1,8 +1,8 @@
-# Mechanisms of cooperative benefit. Adapted from Jakke Makela's TERSI simulation
-# by Florian Lengyel. R.oo classes are used to enable passing the state of the simulation
-# by reference to avoid copying large data structures, and to facilitate modification
-# of them. (S4 objects are immutable unless replacement methods are defined, which
-# introduces lexical ceremony and computational overhead.)
+# Mechanisms of cooperative benefit. 
+# Adapted from Jakke Makela's TERSI simulation by Florian Lengyel. R.oo classes are used 
+# to enable passing the state of the simulation by reference to avoid copying large data 
+# structures, and to facilitate modification of them. (S4 objects are immutable unless 
+# replacement methods are defined, which introduces lexical ceremony and computational overhead.)
 
 library(R.oo)
 
@@ -90,17 +90,17 @@ setConstructorS3("MECHANISM", function (
 })
 
 setMethodS3("InfoTransmission", "MECHANISM", 
-            function(this, annual.wisdom.gain, society, ...) {
-# Distribute information transmission among agents
+            function(this, soc, annual.wisdom.gain, ...) {
+# Information information mechanism. Distributes wisdom among agents
 # If the information transmission flag is TRUE, all agents
 # receive annual.wisdom.gain; otherwise they receive
 # a uniformly distributed random number in [0, 1] times
 # annual.wisdom.gain
 #
 # Args:
-#   wisdom: 1 x kAgents matrix assignment of current wisdom
-#   annual.wisdom.gain:  the maximum level of information transmission
-#   i.flag: TRUE iff Information Transmission mechanism enabled
+#   this: MECHANISM state
+#   soc:  society index
+#   annual.wisdom.gain:  the maximum level of information transmission / year
 #
 # Returns:
 #   nothing
@@ -108,11 +108,47 @@ setMethodS3("InfoTransmission", "MECHANISM",
 # Side effects:
 #   Updates wisdom
               
-  # do nothing just to test
+  random.growth <- runif(this$.num.agents)  # matrix of uniform random numbers for each agent
+  # normalize to the interior of the simplex of dimenstion num.agents - 1
+  normalizer    <- sum(random.growth)  # nonzero since runif() returns nonzero numbers
+  
+  if (.HasMechanism(soc, kI)) { # everyone shares the max information
+    wisdom.increase <- matrix(max(random.growth) / normalizer, 1, this$.num.agents)
+  }
+  else { # No information transmission. Pick up what you can.
+    wisdom.increase <- random.growth / normalizer  # normalize
+  }
+  this$.wisdom[soc, ] <- this$.wisdom[soc, ] + wisdom.increase * annual.wisdom.gain               
 })
 
-setMethodS3("EconomiesOfScale", "MECHANISM", function(this, ...)
-  {})
+
+setMethodS3("EconomiesOfScale", "MECHANISM", function(this, soc, crop, limit, ...) {
+# Economies of Scale mechanism. Distributes wisdom among agents
+#
+# Args:
+#   this: MECHANISM state
+#   soc:  society index
+#   crop: string argument equal to ".a" or ".b"
+#   limit:  the maximum harvest level in the absence of this mechanism
+#
+# Returns:
+#   nothing
+#
+# Side effects:
+#   Updates a and b crops depending whether kE is set in soc
+
+# You might use the exception mechanism to check for ".a" or ".b"
+  
+  surplus <- 0
+  if (.HasMechanism(soc, kE)) {
+     # compute vector of excess over limit of crop for each agent
+     excess <- sapply(this[[crop]][soc, ], function(x){return (max(0, x - limit))})  
+     surplus <- sum(excess) / this$.num.agents  # surplus sums the excesses and distributes
+  }
+  # truncate the crops to the maximum limit and add any surplus
+  this[[crop]][soc, ] <- sapply(this[[crop]][soc, ], function(x) {return(min(x, limit))}) + surplus
+
+})
 
 setMethodS3("GainFromTrade", "MECHANISM", function(this, ...)
   {})

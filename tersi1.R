@@ -158,7 +158,7 @@ setMethod("initialize","SIMULATION",
   .Object@agents  <- agents;        # number of agents 9 to begin with
   .Object@societies <- kSocieties;  # Set number of societies (32)
 
-  .Object  # return the initialized object
+   return(.Object)  # return the initialized object
 })  
 
 
@@ -189,7 +189,7 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
   
   for (run in 1:ob@runs) {
     
-    # set the initial society state for all societies
+    # set the initial society state for all societies in each run
     state <- MECHANISM(crop.target.start = ob@crop.target.start);  
   
     # Define the environment for all societies. 
@@ -199,12 +199,13 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
     crop.coop.start <- ob@crop.target.start * ob@max.coop.ratio;
 
     # Set growing parameters 
-    crop.seed <- ob@crop.seed.start;
+    crop.seed <- ob@crop.seed.start
 
-    crop.target     <- ob@crop.target.start;
-    crop.sust       <- crop.sust.start;
-    global.wisdom   <- ob@wisdom.start;
+    crop.target     <- ob@crop.target.start
+    crop.sust       <- crop.sust.start
+    global.wisdom   <- ob@wisdom.start
 
+    # This could be moved into the MECHANISM state
     a.seed.exists   <- matrix(TRUE, 1, kAgents)  # Doesn't get cut off in first run
     b.seed.exists   <- matrix(TRUE, 1, kAgents)  # for consistency 
 
@@ -223,12 +224,14 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
       # Define rainfall matrices for all societies
       # This is a benefit of simulating all 32 societies at once:
       # environmental conditions are controlled for
+      
+      # These could be moved into the MECHANISM state
       a.rainfall  <- matrix(runif(ob@agents), 1, ob@agents) * ob@max.rain.ratio; 
       b.rainfall  <- matrix(runif(ob@agents), 1, ob@agents) * ob@max.rain.ratio; 
 				                     
       for (soc in 1:ob@societies) {
         # Information transmission
-        InfoTransmission(state, soc, annual.wisdom.gain)
+        InfoTransmission(state, soc, ob@annual.wisdom.gain)
         
         
         # Grow crops (note the RCC violation in the use of private data fields)
@@ -241,7 +244,8 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
       
         # Economies of scale
         crop.weight <- crop.target * ob@max.harvest.ratio;
-        EconomiesOfScale(state, soc, crop.weight)
+        EconomiesOfScale(state, soc, ".a", crop.weight)  # Distribute excess a if EoS enabled
+        EconomiesOfScale(state, soc, ".b", crop.weight)  # Distribute excess b if EoS enabled
         
         # Self binding. If some fields have unsustainable yield, we have a tragedy
         # of the commons and have to decrease the other fields.
@@ -322,7 +326,7 @@ setMethod("initialize","TERSI", function(.Object, filename="") {
   }
   else {
     print("Loading pre-computed simulation statistics.");
-    .Object@society.matrix <- matrix();  # do nothing for now
+    .Object@stats <- matrix();  # do nothing for now
   }
   return (.Object);  # return the initialized object
 }) 
