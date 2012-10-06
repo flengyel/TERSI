@@ -164,27 +164,32 @@ setMethodS3("SelfBinding", "MECHANISM", function(this, soc, crop, sust, ...) {
 # cooperators to pay. If the cooperators can pay, they pay based on what they earn.
 # If they cannot pay, the defectors weight their claim to the entire earnings of
 # the cooperators based on their expectation, as if they were in the previous case.
-  if (.HasMechanism(soc, kS)) {
+  
+
+  cooperator.flags <- this[[crop]][soc, ] <= sust
+  num.cooperators = length(cooperator.flags)
+  if (num.cooperators == 0 | .HasMechanism(soc, kS)) {
     this[[crop]][soc, ] <- sapply(this[[crop]][soc, ], function(x) {return(min(x, sust))})	  
   }	  
-  else {
-    defector.flags <- this[[crop]][soc, ] > sust
+  else { # there are cooperators, zero or more defectors but no self-binding mechanism
+    defector.flags <- ! cooperator.flags 
     defectors <- defector.flags * this[[crop]][soc, ]
     externality <- sum(defectors  - defector.flags * sust)
-    cooperator.flags <- ! defector.flags
     cooperators <- cooperator.flags * this[[crop]][soc, ]
     earned <- sum (cooperators)
     # Now it's a contest between what the cooperators earned and the externality 
     # that the defectors would like to impose on the cooperators.
     if ( externality <= earned ) {
-    # From each cooperator in according to his actual earnings, to each defector according 
-    # to his unsustainable expectation. (Defectors mark to model.) The cooperator's externality
-    # is the defector's subsidy.
-    payout <- cooperators / earned * externality;
-    this[[crop]][soc, ] <- this[[crop]][soc, ] - payout;    
+      # From each cooperator in according to his actual earnings, to each defector according 
+      # to his unsustainable expectation. (Defectors mark to model.) The cooperator's externality
+      # is the defector's subsidy.
+      if (earned > 0) {
+        payout <- cooperators / earned * externality;
+        this[[crop]][soc, ] <- this[[crop]][soc, ] - payout;    
+      } # no payout if cooperators have no earnings
     # note that sum(this[[crop]][soc, ] - payout) = sum(defector.flags * sust + cooperators)
     } 
-    else {
+    else { # earned < externality
       # From each cooperator everything, to each defector according to his expected earnings,
       # sustainable or not.  The cooperators haven't earned enough to pay the defectors. The 
       # defectors now have to negotiate or fight over the proceeds. If the defectors had
