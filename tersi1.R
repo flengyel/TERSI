@@ -30,71 +30,9 @@
 #
 # Addition: Class names are all UPPERCASE.
 
+source("Mechanism.R")  # load R.oo MECHANISM class and constants
 library(methods) # use version S4 R classes
 library(bitops)  # for bitAnd
-
-source("Mechanism.R")  # load R.oo MECHANISM class and constants
-
-
-HasMechanism <- function(society, mechanism) {
-# Check if society has one of the five mechanisms of cooperative benefit enabled
-#
-# Args:
-#   society: number of society 1:32
-#   mechanism: one of kT, kE, kR, kS, kI.
-#
-# Returns:
-#   True iff mechanism bit equals 1 in society-1
-    bitAnd(society-1,mechanism)==1;}
-
-
-InitSocietyState <- function(crop.target.start, profit=0, wisdom=1,
-			                       a = crop.target.start, b = crop.target.start,
-			                       deaths=0, a.famines=0, b.famines=0, 
-			                       dead.profits=0) {
-# Set the initial society state of a the simulation.
-
-# Args:
-#   crop.target.start: initial value of a and b crops.
-#
-# Returns: 
-#   The society.state data structure.
-#   For efficiency, the society state is a list of preallocatted
-#   matrices of two types: agent state matrices and society state vectors.
-#   An agent state matrix has dimensions kSocieties x kAgents. 
-#   The agent state matrices are profit, wisdom, a and b.
-#   The society state vectors have length kSocieties.
-#   The society state is reset at the beginning of the simulation.
-#
-# NOTE: We may want to pass the state by reference, which means introducing
-# R.oo. The function InitSocietyState() below looks like a constructor.
-# The mechanisms of cooperative benefit act on it. The SIMULATION state 
-# might as well be a MECHANISM class. This does mix S4 and R.oo style classes,
-# but the S4 classes are immutable and require replacement methods. They are
-# used for defining "frozen" simulations with their parameters. The R.oo classes
-# implement state changes.
-  
-  # define agent state matrices
-  agent.profit <- matrix(profit , kSocieties, kAgents)
-  agent.wisdom <- matrix(wisdom, kSocieties, kAgents)
-  agent.a      <- matrix(crop.target.start, kSocieties, kAgents)
-  agent.b      <- matrix(crop.target.start, kSocieties, kAgents)
-  
-  # define society state vectors (these are 1 x kSocieties matrices)
-  society.deaths       <- matrix(0, 1, kSocieties);
-  society.a.famines    <- matrix(0, 1, kSocieties);
-  society.b.famines    <- matrix(0, 1,  kSocieties);
-  society.dead.profit  <- matrix(0, 1, kSocieties);
-  
-  # set names of fields
-  state <- list(profit = agent.profit, wisdom = agent.wisdom, a = agent.a, b = agent.b, 
-            deaths = society.deaths, a.famines = society.a.famines, 
-            b.famines = society.b.famines,  dead.profit = society.dead.profit);
-
-  return (state);
-}
-
-
 
 # The SIMULATION class only knows how to define and run simulations.
 # Saving, loading and analyzing simulations is deferred to the
