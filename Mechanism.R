@@ -156,8 +156,48 @@ setMethodS3("GainFromTrade", "MECHANISM", function(this, ...)
 setMethodS3("RiskPooling", "MECHANISM", function(this, ...)
   {})
 
-setMethodS3("SelfBinding", "MECHANISM", function(this, ...)
-  {})
+setMethodS3("SelfBinding", "MECHANISM", function(this, soc, crop, sust, ...) {
+# if the self-binding mechanism holds, a tragedy of the commons is averted,
+# and no one produces above the sustainability limit. If the self-binding mechanism 
+# does not hold, the defectors, defined as those agents over the sustainability limit, 
+# impose a negative externality on the cooperators, based on the ability of the 
+# cooperators to pay. If the cooperators can pay, they pay based on what they earn.
+# If they cannot pay, the defectors weight their claim to the entire earnings of
+# the cooperators based on their expectation, as if they were in the previous case.
+  if (.HasMechanism(soc, kS)) {
+    this[[crop]][soc, ] <- sapply(this[[crop]][soc, ], function(x) {return(min(x, sust))})	  
+  }	  
+  else {
+    defector.flags <- this[[crop]][soc, ] > sust
+    defectors <- defector.flags * this[[crop]][soc, ]
+    externality <- sum(defectors  - defector.flags * sust)
+    cooperator.flags <- ! defector.flags
+    cooperators <- cooperator.flags * this[[crop]][soc, ]
+    earned <- sum (cooperators)
+    # Now it's a contest between what the cooperators earned and the externality 
+    # that the defectors would like to impose on the cooperators.
+    if ( externality <= earned ) {
+    # From each cooperator in according to his actual earnings, to each defector according 
+    # to his unsustainable expectation. (Defectors mark to model.) The cooperator's externality
+    # is the defector's subsidy.
+    payout <- cooperators / earned * externality;
+    this[[crop]][soc, ] <- this[[crop]][soc, ] - payout;    
+    # note that sum(this[[crop]][soc, ] - payout) = sum(defector.flags * sust + cooperators)
+    } 
+    else {
+      # From each cooperator everything, to each defector according to his expected earnings,
+      # sustainable or not.  The cooperators haven't earned enough to pay the defectors. The 
+      # defectors now have to negotiate or fight over the proceeds. If the defectors had
+      # decided to cooperate with each other, they might have split the earnings on the basis 
+      # of their excess claims over sustainable production. That would follow Aumann's 
+      # interpretation of a text from the Talmud. But these defectors don't recognize 
+      # sustainable production.  Each weights his entitlement based on his total expectation.  
+      # We call this weighting the "Pareto greed distribution." Any cooperators are wiped out.
+      pareto <- defectors / sum (defectors);
+      this[[crop]][soc, ] <- (defector.flags * sust) + (pareto * earned);
+    }
+  } # unsustainable
+})
 
 # End of TERSI methods
 
