@@ -150,11 +150,35 @@ setMethodS3("EconomiesOfScale", "MECHANISM", function(this, soc, crop, limit, ..
 
 })
 
-setMethodS3("GainFromTrade", "MECHANISM", function(this, ...)
-  {})
+setMethodS3("RiskPooling", "MECHANISM", function(this, soc, seed, ...) {
+# If farmers go below seed level, the othefs help out unless they go bankrupt.
+#
+# Args:
+#   this: simulation state
+#   soc:  the current society
+#   crop: ".a" or ".b"
+#   seed: minimum level required to plant a viable crop
+#
+# Returns:
+#   state modified to reflect aid to indigent farmers
+  if (.HasMechanism(soc, kR)) {
+     starving.flags <- this[[crop]][soc, ] < seed
+     if (sum(starving.flags) > 0) {  # proceed only if some starve
+	agent.subsistence <- starving.flags * seed
+	starving.agents <-   starving.flags * this[[crop]][soc, ]
+        shortfall <- sum(agent.subsistence - starving.agents)  # shortfalls for each agent
+	wellfed.flags <- ! starving.flags  # negate these. 
+	wellfed.agents <- wellfed.flags * this[[crop]][soc, ]
+        agent.surplus <- wellfed.agents - wellfed.flags * seed  # what the others can spare
+	surplus <- sum(agent.surplus)  # total agent surplus
+	if (surplus > shortfall) {   # help only if no systemic failure
+	   payout <- agent.surplus/surplus * shortfall   # normalize by total surplus
+	   this[[crop]][soc, ] <- wellfed.agents - payout + agent.subsistence
+	}
+     }	 
+  }
+})
 
-setMethodS3("RiskPooling", "MECHANISM", function(this, ...)
-  {})
 
 setMethodS3("SelfBinding", "MECHANISM", function(this, soc, crop, sust, ...) {
 # if the self-binding mechanism holds, a tragedy of the commons is averted,
@@ -209,12 +233,23 @@ setMethodS3("SelfBinding", "MECHANISM", function(this, soc, crop, sust, ...) {
 
 setMethodS3("ComputeProfit", "MECHANISM", function(this, soc, crop.seed, ...) {
 # update the profit matrix for each agent of the society
-# this subtracts the seed crop    
+# this subtracts the seed crop and rewards equal quantites of a and b.
   
-  c <- this$.a[soc, ] + this$.b[soc, ]  #  This assumes that the agent has crops or the sum is zero
-  profit <- (c - 2 * crop.seed) * (2 - abs(this$.a[soc, ] - this$.b[soc, ]) / c) 
-  this$.profit[soc, ] <- this$.profit[soc, ] + sapply(profit, function(x) { max(0, x) })  
+  gross.profit <- this$.a[soc, ] + this$.b[soc, ]   # may be zero in some coordinates
+  delta   <- abs(this$.a[soc, ] - this$.b[soc, ])   # vector of deviates
+
+  # the net profit subtracts the seed values from a and b.
+  net.profit <- sapply(gross.profit - 2 * crop.seed, function(x){max(0, x)})
+
+  # The multiplier rewards more nearly equal crops and penalizes division by 0
+  multiplier <- mapply(function(x, y) { ifelse(y <= 0, 0, 2 - x / y) }, delta, gross.profit)
+
+  this$.profit[soc, ] <- this$.profit[soc, ] + net.profit * multiplier
 })
 
 
+
+setMethodS3("GainFromTrade", "MECHANISM", function(this, soc,  ...) {
+
+})
 

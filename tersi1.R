@@ -196,7 +196,7 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         # Gain from trade. Markets exist only if this mechanism is present
         GainFromTrade(state, soc)
         
-        # profit
+        # Compute profit after running mechanisms of cooperative benefit
         ComputeProfit(state, soc, crop.seed)
       
         # Bury the dead
@@ -210,6 +210,7 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
              state$.deaths[[soc]] <- state$.deaths[[soc]] + 1;  
              # He was crucified under Pontius Pilate. 
              state$.dead.profit[[soc]] <- state$.dead.profit[[soc]] + state$.profit[[soc,corpse]]
+	     # print(state$.dead.profit[[soc]])
              # He suffered and was buried.
              state$.profit[[soc, corpse]] <- 0   # the dead go fast
              # reset the crops to the crop.target for the next farmer
