@@ -139,15 +139,14 @@ setMethodS3("EconomiesOfScale", "MECHANISM", function(this, soc, crop, limit, ..
 
 # You might use the exception mechanism to check for ".a" or ".b"
   
-  surplus <- 0
+  surplus <- 0 
+  v <- this[[crop]][soc, ]
   if (.HasMechanism(soc, kE)) {
-     # compute vector of excess over limit of crop for each agent
-     excess <- sapply(this[[crop]][soc, ], function(x){return (max(0, x - limit))})  
-     surplus <- sum(excess) / this$.num.agents  # surplus sums the excesses and distributes
+    # compute value to be distributed over the limit to each
+    surplus <- sum(v[v > limit] - limit) / this$.num.agents
   }
-  # truncate the crops to the maximum limit and add any surplus
-  this[[crop]][soc, ] <- sapply(this[[crop]][soc, ], function(x) {return(min(x, limit))}) + surplus
-
+  v[v > limit] <- limit   # truncate to maximum individually liftable
+  this[[crop]][soc, ] <- v + surplus
 })
 
 setMethodS3("RiskPooling", "MECHANISM", function(this, soc, seed, ...) {
@@ -190,12 +189,14 @@ setMethodS3("SelfBinding", "MECHANISM", function(this, soc, crop, sust, ...) {
 # the cooperators based on their expectation, as if they were in the previous case.
   
 
-  cooperator.flags <- this[[crop]][soc, ] <= sust
-  num.cooperators = length(cooperator.flags)
-  if (num.cooperators == 0 | .HasMechanism(soc, kS)) {
+  if (.HasMechanism(soc, kS)) {
     this[[crop]][soc, ] <- sapply(this[[crop]][soc, ], function(x) {return(min(x, sust))})	  
   }	  
   else { # there are cooperators, zero or more defectors but no self-binding mechanism
+    cooperator.flags <- this[[crop]][soc, ] <= sust
+    num.cooperators = length(cooperator.flags)
+    # NOTE: there could be no cooperators, no defectors or both cooperators and defectors
+    # handle these cases later
     defector.flags <- ! cooperator.flags 
     defectors <- defector.flags * this[[crop]][soc, ]
     externality <- sum(defectors  - defector.flags * sust)
@@ -228,7 +229,6 @@ setMethodS3("SelfBinding", "MECHANISM", function(this, soc, crop, sust, ...) {
   } # unsustainable
 })
 
-# End of TERSI methods
 
 
 setMethodS3("ComputeProfit", "MECHANISM", function(this, soc, crop.seed, ...) {
@@ -261,7 +261,6 @@ setMethodS3("GainFromTrade", "MECHANISM", function(this, soc, seed, trade.ratio,
       if (traded >= trade.limit) break;
       for (j in (i+1):this$.num.agents) {
         if (traded >= trade.limit) break;
-        print(delta)
         if (sign(delta[[i]]) * sign(delta[[j]]) == -1) { # trade if mutual benefit, meaning:
 	  # either i has more of a (b) than b (a) and j has more of b (a) than a (b).
           max.exchange = min(abs(delta[[i]]), abs(delta[[j]]))  # max exchanged
@@ -285,3 +284,4 @@ setMethodS3("GainFromTrade", "MECHANISM", function(this, soc, seed, trade.ratio,
   }  # if kT mechanism
 })  # GainFromTrade
 
+# End of TERSI methods

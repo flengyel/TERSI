@@ -126,7 +126,8 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
   # we should have histograms also.
   
   for (run in 1:ob@runs) {
-    
+    print(paste("Run number",run,sep=":"))
+
     # set the initial society state for all societies in each run
     state <- MECHANISM(crop.target.start = ob@crop.target.start);  
   
@@ -257,16 +258,31 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
 setClass("TERSI", contains = "SIMULATION",
 	 representation = representation(stats = "list"))
 
-setMethod("initialize","TERSI", function(.Object, filename="") {
+setMethod("initialize","TERSI", function(.Object, filename="", 
+	  crop.target.start = 10, max.sust.ratio = 1.3, 
+	  max.harvest.ratio = 1.5, trade.ratio = 0.5, runs = 100, 
+	  years.per.run = 100, max.rain.ratio = 2, crop.seed.start = 1, 
+	  wisdom.start = 1, agents = 9) {
   # SIMULATION superclass not yet initialized, so initialize it
-  .Object <- callNextMethod(.Object);  # initialize superclass object
+  # Parameters MUST be passed to callNextMethod() for SIMULATION superclass
+  # NOTE: the defaults for SIMULATION can be removed.
+  .Object <- callNextMethod(.Object,crop.target.start = crop.target.start,
+			    max.sust.ratio = max.sust.ratio,
+			    max.harvest.ratio = max.harvest.ratio,
+			    trade.ratio = trade.ratio,
+                            runs = runs,
+			    years.per.run = years.per.run,
+			    max.rain.ratio = max.rain.ratio,
+			    crop.seed.start = crop.seed.start,
+			    wisdom.start = wisdom.start,
+			    agents = agents);  # initialize superclass object. 
   if (filename == "") {
     print("Running simulation.")
     .Object@stats <- Simulate(.Object); # set the simulation statistics
   }
   else {
-    print("Loading pre-computed simulation statistics.");
-    .Object@stats <- matrix();  # do nothing for now
+    print(paste("Loading pre-computed simulation statistics from:", filename));
+    .Object@stats <- list();  # do nothing for now
   }
   return (.Object);  # return the initialized object
 }) 
