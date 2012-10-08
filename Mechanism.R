@@ -249,7 +249,39 @@ setMethodS3("ComputeProfit", "MECHANISM", function(this, soc, crop.seed, ...) {
 
 
 
-setMethodS3("GainFromTrade", "MECHANISM", function(this, soc,  ...) {
+setMethodS3("GainFromTrade", "MECHANISM", function(this, soc, seed, trade.ratio,  ...) {
+# Trade if mechanism enabled
+# Attempts to equalize crops. Profits are computed as a function of how equal they are.
 
-})
+  if (.HasMechanism(soc, kT)) {
+    delta <- this$.a[soc, ] - this$.b[soc, ]     # compute inter-crop differentials 
+    trade.limit <- sum(abs(delta)) * trade.ratio  # maximum tradable value
+    traded <- 0                                  # traded so far
+    for (i in 1:(this$.num.agents-1)) {
+      if (traded >= trade.limit) break;
+      for (j in (i+1):this$.num.agents) {
+        if (traded >= trade.limit) break;
+        print(delta)
+        if (sign(delta[[i]]) * sign(delta[[j]]) == -1) { # trade if mutual benefit, meaning:
+	  # either i has more of a (b) than b (a) and j has more of b (a) than a (b).
+          max.exchange = min(abs(delta[[i]]), abs(delta[[j]]))  # max exchanged
+	  dx <- sign(delta[[i]]) * max.exchange / 2    # equalize the min difference
+	  a.i <- this$.a[[soc, i]]
+	  a.j <- this$.a[[soc, j]]
+	  b.i <- this$.b[[soc, i]]
+	  b.j <- this$.b[[soc, j]]
+          go <- a.i - dx >= seed & b.i + dx >= seed & a.j + dx >= seed & b.j - dx >= seed
+	  if (go) {  # trade only if all trades stay at or above seed 
+            this$.a[[soc, i]] <- a.i - dx
+	    this$.b[[soc, i]] <- b.i + dx
+	    this$.a[[soc, j]] <- a.j + dx
+	    this$.b[[soc, j]] <- b.j - dx
+	    delta <- this$.a[soc, ] - this$.b[soc, ]
+	    traded <- traded + abs(dx)  # |dx| was traded between i and j
+	  }
+        } 
+      }
+    }
+  }  # if kT mechanism
+})  # GainFromTrade
 

@@ -194,7 +194,7 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         RiskPooling(state, soc, crop.seed)
         
         # Gain from trade. Markets exist only if this mechanism is present
-        GainFromTrade(state, soc)
+        GainFromTrade(state, soc, crop.seed, ob@trade.ratio)
         
         # Compute profit after running mechanisms of cooperative benefit
         ComputeProfit(state, soc, crop.seed)
