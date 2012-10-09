@@ -32,7 +32,7 @@
 
 source("Mechanism.R")  # load R.oo MECHANISM class and constants
 library(methods) # use version S4 R classes
-library(bitops)  # for bitAnd
+
 
 # The SIMULATION class only knows how to define and run simulations.
 # Saving, loading and analyzing simulations is deferred to the
