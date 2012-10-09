@@ -109,7 +109,6 @@ setMethodS3("InfoTransmission", "MECHANISM",
 # Side effects:
 #   Updates wisdom
           
-  print("I")
   random.growth <- runif(this$.num.agents)  # matrix of uniform random numbers for each agent
   # normalize to the interior of the simplex of dimenstion num.agents - 1
   normalizer    <- sum(random.growth)  # nonzero since runif() returns nonzero numbers
@@ -139,8 +138,6 @@ setMethodS3("EconomiesOfScale", "MECHANISM", function(this, soc, crop, limit, ..
 # Side effects:
 #   Updates a and b crops depending whether kE is set in soc
 
-# You might use the exception mechanism to check for ".a" or ".b"
-  print("E")
   surplus <- 0 
   v <- this[[crop]][soc, ]
   if (.HasMechanism(soc, kE)) {
@@ -163,7 +160,6 @@ setMethodS3("RiskPooling", "MECHANISM", function(this, soc, crop, seed, ...) {
 # Returns:
 #   state modified to reflect aid to indigent farmers
   
-  print("R")
   if (.HasMechanism(soc, kR)) {
     v <- this[[crop]][soc, ]
     shortfall <- sum(seed - v[v < seed])  # difference the needy agents need to make up
@@ -180,57 +176,29 @@ setMethodS3("RiskPooling", "MECHANISM", function(this, soc, crop, seed, ...) {
  }	 
 })
 
-
 setMethodS3("SelfBinding", "MECHANISM", function(this, soc, crop, sust, ...) {
-# if the self-binding mechanism holds, a tragedy of the commons is averted,
-# and no one produces above the sustainability limit. If the self-binding mechanism 
-# does not hold, the defectors, defined as those agents over the sustainability limit, 
-# impose a negative externality on the cooperators, based on the ability of the 
-# cooperators to pay. If the cooperators can pay, they pay based on what they earn.
-# If they cannot pay, the defectors weight their claim to the entire earnings of
-# the cooperators based on their expectation, as if they were in the previous case.
-
-  print("S")
-  v <- this[[crop]][soc, ]
-  num.defectors <- sum(v > sust)  # count the number of defectors
+  # if the self-binding mechanism holds, a tragedy of the commons is averted,
+  # and no one produces above the sustainability limit. If the self-binding mechanism 
+  # does not hold, the defectors, defined as those agents over the sustainability limit, 
+  # play an n-player prisoner's dilemma in which defectors each receive a fraction
+  # of the sustainable amount and the total proceeds of the cooperators. The fraction
+  # is the reciprocal of the number of defectors. It pays to be the sole defector.
+  # If all are defectors, they undermine each other.
   
+  v <- this[[crop]][soc, ]
   if (.HasMechanism(soc, kS)) {
     v[v > sust] <- sust   # truncate crop to sustainable level
-  }	  
-  else { # there may be a tragedy of the commons
-    if ( num.defectors > 0 ) { # proceed only if some crops are unsustainable
-      externality <-  sum(v[v > sust] - sust)   # the amount imposed on others
-      sustainable <-  sum(v[v <= sust])         # the total sustainable crop value
-      
-      # there are several cases. Use trichotomy to be safe
-      if (externality < sustainable) { # the externality is nonzero and can be absorbed
-        # distribute the externality over the honest farmers
-        v[v <= sust] <- v[v <= sust] * (1 - externality / sustainable)
+  }    
+  else { # potential tragedy of the commons
+    num.defectors <- sum(v > sust)  # count the number of defectors
+    if ( num.defectors > 0 ) { # play an n-player prisoner's dilemma
+      v[v > sust] <- (sust + sum(v[v <= sust])) / num.defectors
+      v[v <= sust] <- 0  # wipe out the cooperators
       }
-      if (externality == sustainable) { # wipe out the honest ones
-        v[v <= sust] <- 0
-      }
-      if (sustainable < externality) { # there are two subcases
-        # case 1, there is some sustainable value
-        if (sustainable > 0) { # now distribute 
-          v[v > sust]  <- (v[v > sust] - sust) * (sustainable / externality) + sust
-          v[v <= sust] <- 0   # wipe out the honest ones
-        }
-        else { # the honest farmers are bankrupt if they exist
-          # This is the interesting case. The defectors could prey on each other.
-          # we use the relative wealth of the defectors to assert ownership
-          # the rich get richer. .
-          # We add some log-normally distributed (hence, nonzero) luck to their
-          # wealth. The agents need this at the beginning.
-          wealth <-  this$.profit[soc, v > sust] + rlnorm(num.defectors)
-          v[v > sust] <- wealth / sum(wealth) * sust * num.defectors
-          print(v)
-        }
-      }      
-    }
-  } # tragedy of the commons  
+  }# tragedy of the commons  
   this[[crop]][soc, ] <- v    # update the result 
 })
+
 
 
 
@@ -255,8 +223,6 @@ setMethodS3("ComputeProfit", "MECHANISM", function(this, soc, crop.seed, ...) {
 setMethodS3("GainFromTrade", "MECHANISM", function(this, soc, seed, trade.ratio,  ...) {
 # Trade if mechanism enabled
 # Attempts to equalize crops. Profits are computed as a function of how equal they are.
-
-  print("T")
   if (.HasMechanism(soc, kT)) {
     delta <- this$.a[soc, ] - this$.b[soc, ]     # compute inter-crop differentials 
     trade.limit <- sum(abs(delta)) * trade.ratio  # maximum tradable value
