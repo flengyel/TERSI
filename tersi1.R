@@ -126,7 +126,7 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
   # we should have histograms also.
   
   for (run in 1:ob@runs) {
-    print(paste("Run number",run,sep=":"))
+    print(paste("Run number", run, sep=":"))
 
     # set the initial society state for all societies in each run
     state <- MECHANISM(crop.target.start = ob@crop.target.start);  
@@ -192,7 +192,8 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         SelfBinding(state, soc, ".b", crop.sust)
         
         # Risk pool mechanism. The insurance adjustor shows up only if present
-        RiskPooling(state, soc, crop.seed)
+        RiskPooling(state, soc, ".a", crop.seed)
+        RiskPooling(state, soc, ".b", crop.seed)
         
         # Gain from trade. Markets exist only if this mechanism is present
         GainFromTrade(state, soc, crop.seed, ob@trade.ratio)
@@ -281,7 +282,7 @@ setMethod("initialize","TERSI", function(.Object, filename="",
     .Object@stats <- Simulate(.Object); # set the simulation statistics
   }
   else {
-    print(paste("Loading pre-computed simulation statistics from:", filename));
+     print(paste("Loading pre-computed simulation statistics from:", filename));
     .Object@stats <- list();  # do nothing for now
   }
   return (.Object);  # return the initialized object

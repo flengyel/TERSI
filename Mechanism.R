@@ -22,8 +22,9 @@ kI <- 16;  # information transmission mechanism bit
   #   mechanism: one of kT, kE, kR, kS, kI.
   #
   # Returns:
-  #   True iff mechanism bit equals 1 in society-1
-  bitAnd(society-1,mechanism)==1;}
+  #   True iff mechanism bit is on in society-1
+  return(bitAnd(society-1,mechanism) == mechanism);
+}
 
 
 
@@ -107,7 +108,8 @@ setMethodS3("InfoTransmission", "MECHANISM",
 #
 # Side effects:
 #   Updates wisdom
-              
+          
+  print("I")
   random.growth <- runif(this$.num.agents)  # matrix of uniform random numbers for each agent
   # normalize to the interior of the simplex of dimenstion num.agents - 1
   normalizer    <- sum(random.growth)  # nonzero since runif() returns nonzero numbers
@@ -138,7 +140,7 @@ setMethodS3("EconomiesOfScale", "MECHANISM", function(this, soc, crop, limit, ..
 #   Updates a and b crops depending whether kE is set in soc
 
 # You might use the exception mechanism to check for ".a" or ".b"
-  
+  print("E")
   surplus <- 0 
   v <- this[[crop]][soc, ]
   if (.HasMechanism(soc, kE)) {
@@ -149,7 +151,7 @@ setMethodS3("EconomiesOfScale", "MECHANISM", function(this, soc, crop, limit, ..
   this[[crop]][soc, ] <- v + surplus
 })
 
-setMethodS3("RiskPooling", "MECHANISM", function(this, soc, seed, ...) {
+setMethodS3("RiskPooling", "MECHANISM", function(this, soc, crop, seed, ...) {
 # If farmers go below seed level, the othefs help out unless they go bankrupt.
 #
 # Args:
@@ -160,22 +162,22 @@ setMethodS3("RiskPooling", "MECHANISM", function(this, soc, seed, ...) {
 #
 # Returns:
 #   state modified to reflect aid to indigent farmers
+  
+  print("R")
   if (.HasMechanism(soc, kR)) {
-     starving.flags <- this[[crop]][soc, ] < seed
-     if (sum(starving.flags) > 0) {  # proceed only if some starve
-	agent.subsistence <- starving.flags * seed
-	starving.agents <-   starving.flags * this[[crop]][soc, ]
-        shortfall <- sum(agent.subsistence - starving.agents)  # shortfalls for each agent
-	wellfed.flags <- ! starving.flags  # negate these. 
-	wellfed.agents <- wellfed.flags * this[[crop]][soc, ]
-        agent.surplus <- wellfed.agents - wellfed.flags * seed  # what the others can spare
-	surplus <- sum(agent.surplus)  # total agent surplus
-	if (surplus > shortfall) {   # help only if no systemic failure
-	   payout <- agent.surplus/surplus * shortfall   # normalize by total surplus
-	   this[[crop]][soc, ] <- wellfed.agents - payout + agent.subsistence
-	}
-     }	 
-  }
+    v <- this[[crop]][soc, ]
+    shortfall <- sum(seed - v[v < seed])  # difference the needy agents need to make up
+    if (shortfall > 0) {  # proceed only if some starve      
+      surplus <- sum(v[v > seed] - seed)  # what the others can spare
+	   if (surplus > shortfall) {   # help only if no systemic failure
+	     # bring the imperiled agent crop to subsistence by normalizing the shortfall over
+       # the healthy agents and subtracting this from the healthy agents
+       v[v > seed] <- v[v > seed] - ((v[v > seed] - seed) * (shortfall / surplus))
+       v[v < seed] <- seed  # bring the needy agents up to subsistence level
+	     this[[crop]][soc, ] <- v
+	   }
+   }
+ }	 
 })
 
 
@@ -187,46 +189,47 @@ setMethodS3("SelfBinding", "MECHANISM", function(this, soc, crop, sust, ...) {
 # cooperators to pay. If the cooperators can pay, they pay based on what they earn.
 # If they cannot pay, the defectors weight their claim to the entire earnings of
 # the cooperators based on their expectation, as if they were in the previous case.
-  
 
+  print("S")
+  v <- this[[crop]][soc, ]
+  num.defectors <- sum(v > sust)  # count the number of defectors
+  
   if (.HasMechanism(soc, kS)) {
-    this[[crop]][soc, ] <- sapply(this[[crop]][soc, ], function(x) {return(min(x, sust))})	  
+    v[v > sust] <- sust   # truncate crop to sustainable level
   }	  
-  else { # there are cooperators, zero or more defectors but no self-binding mechanism
-    cooperator.flags <- this[[crop]][soc, ] <= sust
-    num.cooperators = length(cooperator.flags)
-    # NOTE: there could be no cooperators, no defectors or both cooperators and defectors
-    # handle these cases later
-    defector.flags <- ! cooperator.flags 
-    defectors <- defector.flags * this[[crop]][soc, ]
-    externality <- sum(defectors  - defector.flags * sust)
-    cooperators <- cooperator.flags * this[[crop]][soc, ]
-    earned <- sum (cooperators)
-    # Now it's a contest between what the cooperators earned and the externality 
-    # that the defectors would like to impose on the cooperators.
-    if ( externality <= earned ) {
-      # From each cooperator in according to his actual earnings, to each defector according 
-      # to his unsustainable expectation. (Defectors mark to model.) The cooperator's externality
-      # is the defector's subsidy.
-      if (earned > 0) {
-        payout <- cooperators / earned * externality;
-        this[[crop]][soc, ] <- this[[crop]][soc, ] - payout;    
-      } # no payout if cooperators have no earnings
-    # note that sum(this[[crop]][soc, ] - payout) = sum(defector.flags * sust + cooperators)
-    } 
-    else { # earned < externality
-      # From each cooperator everything, to each defector according to his expected earnings,
-      # sustainable or not.  The cooperators haven't earned enough to pay the defectors. The 
-      # defectors now have to negotiate or fight over the proceeds. If the defectors had
-      # decided to cooperate with each other, they might have split the earnings on the basis 
-      # of their excess claims over sustainable production. That would follow Aumann's 
-      # interpretation of a text from the Talmud. But these defectors don't recognize 
-      # sustainable production.  Each weights his entitlement based on his total expectation.  
-      # We call this weighting the "Pareto greed distribution." Any cooperators are wiped out.
-      pareto <- defectors / sum (defectors);
-      this[[crop]][soc, ] <- (defector.flags * sust) + (pareto * earned);
+  else { # there may be a tragedy of the commons
+    if ( num.defectors > 0 ) { # proceed only if some crops are unsustainable
+      externality <-  sum(v[v > sust] - sust)   # the amount imposed on others
+      sustainable <-  sum(v[v <= sust])         # the total sustainable crop value
+      
+      # there are several cases. Use trichotomy to be safe
+      if (externality < sustainable) { # the externality is nonzero and can be absorbed
+        # distribute the externality over the honest farmers
+        v[v <= sust] <- v[v <= sust] * (1 - externality / sustainable)
+      }
+      if (externality == sustainable) { # wipe out the honest ones
+        v[v <= sust] <- 0
+      }
+      if (sustainable < externality) { # there are two subcases
+        # case 1, there is some sustainable value
+        if (sustainable > 0) { # now distribute 
+          v[v > sust]  <- (v[v > sust] - sust) * (sustainable / externality) + sust
+          v[v <= sust] <- 0   # wipe out the honest ones
+        }
+        else { # the honest farmers are bankrupt if they exist
+          # This is the interesting case. The defectors could prey on each other.
+          # we use the relative wealth of the defectors to assert ownership
+          # the rich get richer. .
+          # We add some log-normally distributed (hence, nonzero) luck to their
+          # wealth. The agents need this at the beginning.
+          wealth <-  this$.profit[soc, v > sust] + rlnorm(num.defectors)
+          v[v > sust] <- wealth / sum(wealth) * sust * num.defectors
+          print(v)
+        }
+      }      
     }
-  } # unsustainable
+  } # tragedy of the commons  
+  this[[crop]][soc, ] <- v    # update the result 
 })
 
 
@@ -239,11 +242,11 @@ setMethodS3("ComputeProfit", "MECHANISM", function(this, soc, crop.seed, ...) {
   delta   <- abs(this$.a[soc, ] - this$.b[soc, ])   # vector of deviates
 
   # the net profit subtracts the seed values from a and b.
-  net.profit <- sapply(gross.profit - 2 * crop.seed, function(x){max(0, x)})
+  net.profit <- gross.profit - 2 * crop.seed
+  net.profit[net.profit < 0] <- 0   # adjust for values below 0 (beats using apply())
 
   # The multiplier rewards more nearly equal crops and penalizes division by 0
   multiplier <- mapply(function(x, y) { ifelse(y <= 0, 0, 2 - x / y) }, delta, gross.profit)
-
   this$.profit[soc, ] <- this$.profit[soc, ] + net.profit * multiplier
 })
 
@@ -253,6 +256,7 @@ setMethodS3("GainFromTrade", "MECHANISM", function(this, soc, seed, trade.ratio,
 # Trade if mechanism enabled
 # Attempts to equalize crops. Profits are computed as a function of how equal they are.
 
+  print("T")
   if (.HasMechanism(soc, kT)) {
     delta <- this$.a[soc, ] - this$.b[soc, ]     # compute inter-crop differentials 
     trade.limit <- sum(abs(delta)) * trade.ratio  # maximum tradable value
@@ -262,22 +266,22 @@ setMethodS3("GainFromTrade", "MECHANISM", function(this, soc, seed, trade.ratio,
       for (j in (i+1):this$.num.agents) {
         if (traded >= trade.limit) break;
         if (sign(delta[[i]]) * sign(delta[[j]]) == -1) { # trade if mutual benefit, meaning:
-	  # either i has more of a (b) than b (a) and j has more of b (a) than a (b).
+	        # either i has more of a (b) than b (a) and j has more of b (a) than a (b).
           max.exchange = min(abs(delta[[i]]), abs(delta[[j]]))  # max exchanged
-	  dx <- sign(delta[[i]]) * max.exchange / 2    # equalize the min difference
-	  a.i <- this$.a[[soc, i]]
-	  a.j <- this$.a[[soc, j]]
-	  b.i <- this$.b[[soc, i]]
-	  b.j <- this$.b[[soc, j]]
+	        dx <- sign(delta[[i]]) * max.exchange / 2    # equalize the min difference
+	        a.i <- this$.a[[soc, i]]
+	        a.j <- this$.a[[soc, j]]
+	        b.i <- this$.b[[soc, i]]
+	        b.j <- this$.b[[soc, j]]
           go <- a.i - dx >= seed & b.i + dx >= seed & a.j + dx >= seed & b.j - dx >= seed
-	  if (go) {  # trade only if all trades stay at or above seed 
+	        if (go) {  # trade only if all trades stay at or above seed 
             this$.a[[soc, i]] <- a.i - dx
-	    this$.b[[soc, i]] <- b.i + dx
-	    this$.a[[soc, j]] <- a.j + dx
-	    this$.b[[soc, j]] <- b.j - dx
-	    delta <- this$.a[soc, ] - this$.b[soc, ]
-	    traded <- traded + abs(dx)  # |dx| was traded between i and j
-	  }
+	          this$.b[[soc, i]] <- b.i + dx
+	          this$.a[[soc, j]] <- a.j + dx
+	          this$.b[[soc, j]] <- b.j - dx
+	          delta <- this$.a[soc, ] - this$.b[soc, ]
+	          traded <- traded + abs(dx)  # |dx| was traded between i and j
+	        }
         } 
       }
     }
