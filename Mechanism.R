@@ -5,6 +5,7 @@
 # replacement methods are defined, which introduces lexical ceremony and computational overhead.)
 
 library(R.oo)
+library(bitops)
 
 # The TERSI constants (constants are camelCase beginning with k)
 kT <- 1;   # gain from trade mechanism bit

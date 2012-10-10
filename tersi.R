@@ -19,7 +19,7 @@
 # combination that rarely comes up in text searches, so journlists use it.)
 #
 # The Google Style Guide recommends using S3 classes instead of S4 classes 
-# unless there is a justification. My justification for using them is 
+# unless there is a justification. My justification for S4 classes is 
 # that I know more about S4 classes than S3 classes. They are used to store
 # simulation parmeters and completed simulations. S4 class objects
 # are immutable and R does not currently provide intrinsic support for 
@@ -257,7 +257,8 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
 # the TERSI subclass.
 
 setClass("TERSI", contains = "SIMULATION",
-	 representation = representation(stats = "list"))
+	 representation = representation(stats = "list",
+					 palette = "character"))
 
 setMethod("initialize","TERSI", function(.Object, filename="", 
 	  crop.target.start = 10, max.sust.ratio = 1.3, 
@@ -277,6 +278,11 @@ setMethod("initialize","TERSI", function(.Object, filename="",
 			    crop.seed.start = crop.seed.start,
 			    wisdom.start = wisdom.start,
 			    agents = agents);  # initialize superclass object. 
+
+  # initialize palette for ggplot graphics
+  .Object@palette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", 
+		       "#F0E442", "#0072B2", "#D55E00", "#CC79A7");
+
   if (filename == "") {
     print("Running simulation.")
     .Object@stats <- Simulate(.Object); # set the simulation statistics
