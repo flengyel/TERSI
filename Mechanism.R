@@ -200,6 +200,27 @@ setMethodS3("SelfBinding", "MECHANISM", function(this, soc, crop, sust, ...) {
   this[[crop]][soc, ] <- v    # update the result 
 })
 
+setMethodS3("SelfBindingJM", "MECHANISM", function(this, soc, crop, sust, ...) {
+  # if the self-binding mechanism holds, a tragedy of the commons is averted,
+  # and no one produces above the sustainability limit. If the self-binding mechanism 
+  # does not hold, the defectors, defined as those agents over the sustainability limit, 
+  # impose a an average cost on the cooperators equal to 1/2 their unsustainable yield.
+  
+  v <- this[[crop]][soc, ]
+  if (.HasMechanism(soc, kS)) {
+    v[v > sust] <- sust   # truncate crop to sustainable level
+  }    
+  else { # defectors keep their profits and subject cooperators to a shock
+    sum.cooperators <- sum(v <= sust)  # compute cooperator yield
+    if ( sum.cooperators > 0 ) { # subject solvent cooperators to random shock
+      shock <-  ((v[v <= sust] / sum.cooperators) * sum(v[v > sust]) * runif(1)
+      v[v <= sust] <- v[v <= sust] - shock
+      v[v < 0] <- 0   # correct negative terms
+      this[[crop]][soc, ] <- v    # update the result
+    }
+  }# The rich get richer
+ 
+})
 
 
 
