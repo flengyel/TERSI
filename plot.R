@@ -35,9 +35,9 @@ TersiLegend <- function(f) {
 .sim.title <- function(ob) {
 return(paste("TERSI Simulation\n",
   "agents:",ob@agents, 
-  "ct:", ob@crop.target.start,
-  "msr:", ob@max.sust.ratio,
-  "mhr:", ob@max.harvest.ratio))
+  " crop target:", ob@crop.target.start,
+  " sustainability ratio:", ob@max.sust.ratio,
+  " harvest ratio:", ob@max.harvest.ratio,sep=''))
 }
 
 hobbes <- function(ob, mech) {
@@ -84,6 +84,22 @@ setMethod("plot",
       geom_line(aes(y=T, colour="T")) +
       geom_line(aes(y=E, colour="E")) +
       geom_line(aes(y=I, colour="I")) +
+      labs(title=.sim.title(ob)) +
+      scale_color_manual("Legend", values=ob@palette)
+  } else    if (f == 3) {
+    df <- data.frame(Run=1:ob@runs, 
+                     ERSI=hobbes(ob,1+kE+kR+kS+kI),
+                     TRSI=hobbes(ob,1+kT+kR+kS+kI),
+                     TERI=hobbes(ob,1+kT+kE+kR+kI),
+                     TERS=hobbes(ob,1+kE+kR+kS),
+                     TERSI=hobbes(ob,1+kT+kE+kR+kS+kI))
+    ggplot(df,aes(x=Run))  + ylab("Hobbes Index") +
+      theme(legend.background=element_rect()) +
+      geom_line(aes(y=ERSI, colour="ERSI")) +
+      geom_line(aes(y=TRSI, colour="TRSI")) +
+      geom_line(aes(y=TERI, colour="TERI")) +
+      geom_line(aes(y=TERS, colour="TERS")) +
+      geom_line(aes(y=TERSI, colour="TERSI")) +
       labs(title=.sim.title(ob)) +
       scale_color_manual("Legend", values=ob@palette)
   } else {
