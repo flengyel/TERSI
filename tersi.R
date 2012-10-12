@@ -193,7 +193,7 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         
         # Self binding. If some fields have unsustainable yield, we have a tragedy
         # of the commons and have to decrease the other fields.
-        SelfBinding(state, soc, ".a", crop.sust)         # crop a N-player if no S
+        SelfBindingJM(state, soc, ".a", crop.sust)         # crop a N-player if no S
         SelfBindingJM(state, soc, ".b", crop.sust)       # crop b rich get richer if no S
         
         # Risk pool mechanism. The insurance adjustor shows up only if present
