@@ -59,6 +59,7 @@ setClass("SIMULATION", representation = representation(
   trade.ratio = "numeric",         # Maximum that can be traded
   crop.seed.start = "numeric",     # Minimum seed crop for next year
   wisdom.start = "numeric",        # global wisdom parameter
+  profit.start = "numeric",        # initial profit value (0)
   agents = "numeric",      # number of agents in society
   societies = "numeric"))          # number of societies
 
@@ -66,7 +67,7 @@ setClass("SIMULATION", representation = representation(
 setMethod("initialize","SIMULATION", 
 	  function(.Object, 
 		   crop.target.start = 10, 
-                   max.sust.ratio = 1.3, 
+       max.sust.ratio = 1.3, 
 		   max.harvest.ratio = 1.5,
 		   trade.ratio = 0.5,
 		   runs = 100,
@@ -74,6 +75,7 @@ setMethod("initialize","SIMULATION",
 		   max.rain.ratio = 2,
 		   crop.seed.start = 1,
 		   wisdom.start = 1,
+       profit.start = 0,
 		   agents = 9) {
   .Object@crop.target.start <- crop.target.start;
   .Object@max.sust.ratio <- max.sust.ratio;
@@ -92,7 +94,8 @@ setMethod("initialize","SIMULATION",
   .Object@crop.seed.start <- crop.seed.start;  
    # Minimum needed as seed crop for next year
    # Wisdom Parameters. Do not change by default
-  .Object@wisdom.start <- wisdom.start; 
+  .Object@wisdom.start <- wisdom.start;   # ordinarily 1
+  .Object@profit.start <- profit.start;  # ordinarily 0
   .Object@agents  <- agents;        # number of agents 9 to begin with
   .Object@societies <- kSocieties;  # Set number of societies (32)
 
@@ -129,8 +132,8 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
     print(paste("Run number", run, sep=":"))
 
     # set the initial society state for all societies in each run
-    state <- MECHANISM(crop.target.start = ob@crop.target.start);  
-  
+    state <- MECHANISM(ob);   # pass simulation parameter object DRY
+         
     # Define the environment for all societies. 
     # This is to change as little as necessary across societies
     # as the mechanisms of cooperative benefit change
@@ -145,8 +148,8 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
     global.wisdom   <- ob@wisdom.start
 
     # This could be moved into the MECHANISM state
-    a.seed.exists   <- matrix(TRUE, 1, kAgents)  # Doesn't get cut off in first run
-    b.seed.exists   <- matrix(TRUE, 1, kAgents)  # for consistency 
+    a.seed.exists   <- matrix(TRUE, 1, ob@agents)  # Doesn't get cut off in first run
+    b.seed.exists   <- matrix(TRUE, 1, ob@agents)  # for consistency 
 
 
     # Simulate each world for a lifetime 
@@ -174,12 +177,14 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         
         
         # Grow crops (note the RCC violation in the use of private data fields)
+        # TODO: consider moving any code with private data L-values into Mechanism.R
+        # private data R-values could be returned by a member function
         state$.a[soc, ] <- a.rainfall * state$.wisdom[soc, ]  * a.seed.exists * crop.target;
         state$.b[soc, ] <- b.rainfall * state$.wisdom[soc, ]  * b.seed.exists * crop.target;
         
         # Calculate famines (the summation trick to turn TRUE to 1 works in MATLAB and R!)
-        state$.a.famines[[soc]] <- state$.a.famines[[soc]] + sum(a.seed.exists == 0);
-        state$.b.famines[[soc]] <- state$.b.famines[[soc]] + sum(b.seed.exists == 0);
+        a.famines[[run, soc]] <- a.famines[[run, soc]] + sum(a.seed.exists == 0);
+        b.famines[[run, soc]] <- b.famines[[run, soc]] + sum(b.seed.exists == 0);
       
         # Economies of scale
         crop.weight <- crop.target * ob@max.harvest.ratio;
@@ -188,8 +193,8 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         
         # Self binding. If some fields have unsustainable yield, we have a tragedy
         # of the commons and have to decrease the other fields.
-        SelfBinding(state, soc, ".a", crop.sust)
-        SelfBinding(state, soc, ".b", crop.sust)
+        SelfBinding(state, soc, ".a", crop.sust)         # crop a N-player if no S
+        SelfBindingJM(state, soc, ".b", crop.sust)       # crop b rich get richer if no S
         
         # Risk pool mechanism. The insurance adjustor shows up only if present
         RiskPooling(state, soc, ".a", crop.seed)
@@ -209,9 +214,10 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         if (length(dead.agents) > 0) { 
            for (corpse in dead.agents) {  
              # Crucifixus 
-             state$.deaths[[soc]] <- state$.deaths[[soc]] + 1;  
+             deaths[[run, soc]] <- deaths[[run, soc]] + 1;  
              # He was crucified under Pontius Pilate. 
-             state$.dead.profit[[soc]] <- state$.dead.profit[[soc]] + state$.profit[[soc,corpse]]
+             # Note the private data field here
+             dead.profit[[run, soc]] <- dead.profit[[run, soc]] + state$.profit[[soc,corpse]]
 	     # print(state$.dead.profit[[soc]])
              # He suffered and was buried.
              state$.profit[[soc, corpse]] <- 0   # the dead go fast
@@ -229,12 +235,9 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         current.profit[[run, soc]] <- sum(state$.profit[soc, ])
         max.profit[[run, soc]]     <- max(state$.profit[soc, ])
         min.profit[[run, soc]]     <- min(state$.profit[soc, ])
-        deaths[[run, soc]]         <- state$.deaths[[soc]]
-        dead.profit[[run, soc]]    <- state$.dead.profit[[soc]]
-        a.famines[[run, soc]]      <- state$.a.famines[[soc]]               
-        b.famines[[run, soc]]      <- state$.b.famines[[soc]]
       } # for each society            
     } # for years.per.run
+    rm(state)   # remove the old state
   }  # for runs
   return (list(current.profit = current.profit, 
                max.profit = max.profit,
@@ -272,7 +275,7 @@ setMethod("initialize","TERSI", function(.Object, filename="",
 			    max.sust.ratio = max.sust.ratio,
 			    max.harvest.ratio = max.harvest.ratio,
 			    trade.ratio = trade.ratio,
-                            runs = runs,
+          runs = runs,
 			    years.per.run = years.per.run,
 			    max.rain.ratio = max.rain.ratio,
 			    crop.seed.start = crop.seed.start,
