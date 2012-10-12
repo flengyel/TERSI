@@ -33,6 +33,8 @@ kAgents    <-  9;  # number of agents per society
 kSocieties <- 32;  # number of societies
 
 
+
+
 # The MECHANISM class contains the state of a SIMULATION,
 # as well as member functions corresponding to cooperative
 # benefits. R.oo classes contain mutable state, unlike
@@ -44,51 +46,25 @@ setConstructorS3("MECHANISM", function (
 # cooperative benefit.
 #  
 # Args:
-#   crop.target.start: initial value of a and b crops.
-#   profit:  default profit value of all agents
-#   wisdom:  starting information transmission parameter
-#   a:       initial crop a value for each agent
-#   b:       initial crop b value for each agent
-#   deaths:  initial number of deaths in each society  
+#   sim:     SIMULATION object. Contains simulation parameters.
 #  
 # Returns: 
 #   Nothing. The side effect is to define the MECHANISM class.
-#   For efficiency, the society state is a list of preallocatted
-#   matrices of two types: agent state matrices and society state vectors.
+#   Agent state mechanisms are defined by this class. The society
+#   state is defined elsewhere.
 #   An agent state matrix has dimensions kSocieties x kAgents. 
 #   The agent state matrices are profit, wisdom, a and b.
-#   The society state vectors have length kSocieties.
-#   The society state is reset at the beginning of each run
-  
-  crop.target.start = 1.6, 
-  profit=0, 
-  wisdom=1,
-  a = crop.target.start, 
-  b = crop.target.start,
-  deaths=0, 
-  a.famines=0, 
-  b.famines=0, 
-  dead.profit=0,
-  num.societies = kSocieties, 
-  num.agents = kAgents) {
-
+  sim = new("SIMULATION")) {
 #  We set parameters in the function definition instead of using
 #  if (missing) statements.
   
   extend(Object(), "MECHANISM", 
-    .num.societies = num.societies,
-    .num.agents    = num.agents,
-    .crop.target.start = crop.target.start,
-    # define agent state matrices  
-    .profit = matrix(profit, num.societies, num.agents),
-    .wisdom = matrix(wisdom, num.societies, num.agents),
-    .a      = matrix(crop.target.start, num.societies, num.agents),
-    .b      = matrix(crop.target.start, num.societies, num.agents),
-    # define society state matrices (vectors)
-    .deaths      = matrix(deaths, 1, num.societies),
-    .a.famines   = matrix(a.famines, 1, num.societies),
-    .b.famines   = matrix(b.famines, 1, num.societies),
-    .dead.profit = matrix(dead.profit, 1, num.societies)) # extend Object()
+    .sim = sim,  # set simulation parameters
+    # define agent state matrices using simulation parameters 
+    .profit = matrix(sim@profit.start, sim@societies, sim@agents),
+    .wisdom = matrix(sim@wisdom.start, sim@societies, sim@agents),
+    .a      = matrix(sim@crop.target.start, sim@societies, sim@agents),
+    .b      = matrix(sim@crop.target.start, sim@societies, sim@agents))
 })
 
 setMethodS3("InfoTransmission", "MECHANISM", 
@@ -110,12 +86,13 @@ setMethodS3("InfoTransmission", "MECHANISM",
 # Side effects:
 #   Updates wisdom
           
-  random.growth <- runif(this$.num.agents)  # matrix of uniform random numbers for each agent
+ 
+  random.growth <- runif(this$.sim@agents)  # matrix of uniform random numbers for each agent
   # normalize to the interior of the simplex of dimenstion num.agents - 1
   normalizer    <- sum(random.growth)  # nonzero since runif() returns nonzero numbers
   
   if (.HasMechanism(soc, kI)) { # everyone shares the max information
-    wisdom.increase <- matrix(max(random.growth) / normalizer, 1, this$.num.agents)
+    wisdom.increase <- matrix(max(random.growth) / normalizer, 1, this$.sim@agents)
   }
   else { # No information transmission. Pick up what you can.
     wisdom.increase <- random.growth / normalizer  # normalize
@@ -143,7 +120,7 @@ setMethodS3("EconomiesOfScale", "MECHANISM", function(this, soc, crop, limit, ..
   v <- this[[crop]][soc, ]
   if (.HasMechanism(soc, kE)) {
     # compute value to be distributed over the limit to each
-    surplus <- sum(v[v > limit] - limit) / this$.num.agents
+    surplus <- sum(v[v > limit] - limit) / this$.sim@agents
   }
   v[v > limit] <- limit   # truncate to maximum individually liftable
   this[[crop]][soc, ] <- v + surplus
@@ -213,7 +190,7 @@ setMethodS3("SelfBindingJM", "MECHANISM", function(this, soc, crop, sust, ...) {
   else { # defectors keep their profits and subject cooperators to a shock
     sum.cooperators <- sum(v <= sust)  # compute cooperator yield
     if ( sum.cooperators > 0 ) { # subject solvent cooperators to random shock
-      shock <-  ((v[v <= sust] / sum.cooperators) * sum(v[v > sust]) * runif(1)
+      shock <-  (v[v <= sust] / sum.cooperators) * sum(v[v > sust]) * runif(1)
       v[v <= sust] <- v[v <= sust] - shock
       v[v < 0] <- 0   # correct negative terms
       this[[crop]][soc, ] <- v    # update the result
@@ -249,9 +226,9 @@ setMethodS3("GainFromTrade", "MECHANISM", function(this, soc, seed, trade.ratio,
     delta <- this$.a[soc, ] - this$.b[soc, ]     # compute inter-crop differentials 
     trade.limit <- sum(abs(delta)) * trade.ratio  # maximum tradable value
     traded <- 0                                  # traded so far
-    for (i in 1:(this$.num.agents-1)) {
+    for (i in 1:(this$.sim@agents-1)) {
       if (traded >= trade.limit) break;
-      for (j in (i+1):this$.num.agents) {
+      for (j in (i+1):this$.sim@agents) {
         if (traded >= trade.limit) break;
         if (sign(delta[[i]]) * sign(delta[[j]]) == -1) { # trade if mutual benefit, meaning:
 	        # either i has more of a (b) than b (a) and j has more of b (a) than a (b).
