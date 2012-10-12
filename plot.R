@@ -32,6 +32,14 @@ TersiLegend <- function(f) {
   return(s)  
 }
 
+.sim.title <- function(ob) {
+return(paste("TERSI Simulation\n",
+  "agents:",ob@agents, 
+  "ct:", ob@crop.target.start,
+  "msr:", ob@max.sust.ratio,
+  "mhr:", ob@max.harvest.ratio))
+}
+
 hobbes <- function(ob, mech) {
   return((ob@stats$current.profit[ , mech] 
           + ob@stats$dead.profit[ , mech]) / (ob@stats$deaths[ , mech] + 1))
@@ -62,6 +70,7 @@ setMethod("plot",
     geom_line(aes(y=R, colour="R")) +
     geom_line(aes(y=TERS, colour="TERS")) +
     geom_line(aes(y=S, colour="S")) +
+    labs(title=.sim.title(ob)) +
     scale_color_manual("Legend", values=ob@palette)
   } else if (f == 2) {
     df <- data.frame(Run=1:ob@runs, 
@@ -75,6 +84,7 @@ setMethod("plot",
       geom_line(aes(y=T, colour="T")) +
       geom_line(aes(y=E, colour="E")) +
       geom_line(aes(y=I, colour="I")) +
+      labs(title=.sim.title(ob)) +
       scale_color_manual("Legend", values=ob@palette)
   } else {
     
@@ -85,6 +95,7 @@ setMethod("plot",
       theme(legend.background=element_rect()) +
       geom_line(aes(y=R, colour="R")) +
       geom_line(aes(y=S, colour="S")) +
+      labs(title=.sim.title(ob)) +
       scale_color_manual("Legend", values=ob@palette)
   }
     
