@@ -116,9 +116,9 @@ setMethodS3("EconomiesOfScale", "MECHANISM", function(this, soc, crop, limit, ..
 # Side effects:
 #   Updates a and b crops depending whether kE is set in soc
 
-  surplus <- 0 
-  v <- this[[crop]][soc, ]
   if (.HasMechanism(soc, kE)) {
+    surplus <- 0 
+    v <- this[[crop]][soc, ]
     # compute value to be distributed over the limit to each
     surplus <- sum(v[v > limit] - limit) / this$.sim@agents
   }
