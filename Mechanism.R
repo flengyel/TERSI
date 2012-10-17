@@ -27,7 +27,20 @@ kI <- 16;  # information transmission mechanism bit
   return(bitAnd(society-1,mechanism) == mechanism);
 }
 
-
+TersiLegend <- function(f) {
+  if (f==1) return("O")
+  mechs <- c("T","E","R","S","I")
+  bits <- c(1,2,4,8,16)
+  flag <- f-1
+  s <- ""
+  i <- 0
+  for (bit in bits) {
+    i <- i + 1
+    if (bitAnd(flag,bit) == bit)
+      s <- paste(s, mechs[[i]],sep='')
+  }
+  return(s)  
+}
 
 kAgents    <-  9;  # number of agents per society
 kSocieties <- 32;  # number of societies
@@ -40,32 +53,97 @@ kSocieties <- 32;  # number of societies
 # benefits. R.oo classes contain mutable state, unlike
 # S4 classes, so they are used here.
 
-setConstructorS3("MECHANISM", function (
-# Set the initial society state for one run of the simulation.
+setConstructorS3("MECHANISM", function (sim = new("SIMULATION")) {  # set simulation state
 # Methods of the MECHANISM class define the five mechanisms of
 # cooperative benefit.
 #  
 # Args:
 #   sim:     SIMULATION object. Contains simulation parameters.
-#  
 # Returns: 
 #   Nothing. The side effect is to define the MECHANISM class.
 #   Agent state mechanisms are defined by this class. The society
 #   state is defined elsewhere.
 #   An agent state matrix has dimensions kSocieties x kAgents. 
 #   The agent state matrices are profit, wisdom, a and b.
-  sim = new("SIMULATION")) {
-#  We set parameters in the function definition instead of using
-#  if (missing) statements.
-  
   extend(Object(), "MECHANISM", 
-    .sim = sim,  # set simulation parameters
-    # define agent state matrices using simulation parameters 
+    .sim = sim,  # set simulation parameters (no need for if missing statements)
+    # define agent state variables and matrices, using simulation parameters
+    .max.profit = matrix(sim@profit.start, 1, sim@societies),  # max of all agent profits
+    .min.profit = matrix(sim@profit.start, 1, sim@societies),  # min of all agent profits
     .profit = matrix(sim@profit.start, sim@societies, sim@agents),
     .wisdom = matrix(sim@wisdom.start, sim@societies, sim@agents),
     .a      = matrix(sim@crop.target.start, sim@societies, sim@agents),
-    .b      = matrix(sim@crop.target.start, sim@societies, sim@agents))
+    .b      = matrix(sim@crop.target.start, sim@societies, sim@agents),
+    .a.seed.exists = matrix(TRUE, sim@societies, sim@agents),  
+    .b.seed.exists = matrix(TRUE, sim@societies, sim@agents),
+    # society state variables hold for all societies
+    .a.rainfall  =  runif(sim@agents) * sim@max.rain.ratio, 
+    .b.rainfall  =  runif(sim@agents) * sim@max.rain.ratio)
 })
+
+setMethodS3("Rainfall", "MECHANISM", function(this, ...) {
+  this$.a.rainfall  <- runif(this$.sim@agents) * this$.sim@max.rain.ratio 
+  this$.b.rainfall  <- runif(this$.sim@agents) * this$.sim@max.rain.ratio
+})
+
+
+setMethodS3("GrowCrops", "MECHANISM", function(this, soc, crop.target, ...) {
+  this$.a[soc, ] <- this$.a.rainfall * this$.wisdom[soc, ]  * 
+                      this$.a.seed.exists[soc, ] * crop.target
+  this$.b[soc, ] <- this$.b.rainfall * this$.wisdom[soc, ]  * 
+                      this$.b.seed.exists[soc, ] * crop.target
+})
+
+					              
+setMethodS3("Famines", "MECHANISM", function(this, soc,  seed.exists, ...) {
+  return (sum(this[[seed.exists]][soc, ] == 0))
+})
+
+
+setMethodS3("AgentProfit", "MECHANISM", function(this, soc, agent, ...) {
+# Return the profit matrix
+# Args:
+#   this: this S3 object
+#   soc:  number of society
+# Returns:
+#   vector of agent profits for soc	    
+  return (this$.profit[[soc, agent]])})
+
+
+
+setMethodS3("Crucifixus", "MECHANISM", function(this, soc, crop.seed, ...) {
+# List indices of bankrupted agents
+# Args:
+#   this: this S3 object
+#   soc:  number of society
+#   crop.seed: subsistence amount needed to grow next year's crops
+# Returns:
+#   vector of indices of dead agents
+  this$.a.seed.exists[soc, ]  <- this$.a[soc, ] >= crop.seed  # boolean vector
+  this$.b.seed.exists[soc, ]  <- this$.b[soc, ] >= crop.seed  # boolean vector
+  # index the dead
+  return(which( ! (this$.a.seed.exists[soc, ] | this$.b.seed.exists[soc, ]))) 
+})
+
+setMethodS3("EtResurrexit", "MECHANISM", function(this, soc, agent, crop.target, ...) {
+# An agent has gone bankrupt. Create a new agent in his place.
+# Args:
+#   this: this S3 object
+#   soc:  number of society
+#   agent: agent to resurrect
+#   crop.seed: subsistence amount needed to grow next year's crops
+# Returns:
+#   Nothing. Agent resurrected.
+  this$.profit[[soc, agent]] <- 0   # the dead go fast
+  # reset the crops to the crop.target for the next farmer
+  this$.a[[soc, agent]] <- crop.target;
+  this$.b[[soc, agent]] <- crop.target;
+  # leave the wisdom intact. JM says this is for simplicity
+  this$.a.seed.exists[[soc, agent]] <- TRUE;  # Et Resurrexit!
+  this$.b.seed.exists[[soc, agent]] <- TRUE;
+})
+				      
+          
 
 setMethodS3("InfoTransmission", "MECHANISM", 
             function(this, soc, annual.wisdom.gain, ...) {
@@ -116,9 +194,9 @@ setMethodS3("EconomiesOfScale", "MECHANISM", function(this, soc, crop, limit, ..
 # Side effects:
 #   Updates a and b crops depending whether kE is set in soc
 
+  surplus <- 0 
+  v <- this[[crop]][soc, ]
   if (.HasMechanism(soc, kE)) {
-    surplus <- 0 
-    v <- this[[crop]][soc, ]
     # compute value to be distributed over the limit to each
     surplus <- sum(v[v > limit] - limit) / this$.sim@agents
   }
@@ -215,6 +293,8 @@ setMethodS3("ComputeProfit", "MECHANISM", function(this, soc, crop.seed, ...) {
   # The multiplier rewards more nearly equal crops and penalizes division by 0
   multiplier <- mapply(function(x, y) { ifelse(y <= 0, 0, 2 - x / y) }, delta, gross.profit)
   this$.profit[soc, ] <- this$.profit[soc, ] + net.profit * multiplier
+  this$.max.profit[[soc]] <- max(this$.max.profit[[soc]], this$.profit[soc, ])
+  this$.min.profit[[soc]] <- min(this$.min.profit[[soc]], this$.profit[soc, ])
 })
 
 
