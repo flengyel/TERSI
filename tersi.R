@@ -147,10 +147,6 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
     crop.sust       <- crop.sust.start
     global.wisdom   <- ob@wisdom.start
 
-    # This could be moved into the MECHANISM state
-    a.seed.exists   <- matrix(TRUE, 1, ob@agents)  # Doesn't get cut off in first run
-    b.seed.exists   <- matrix(TRUE, 1, ob@agents)  # for consistency 
-
 
     # Simulate each world for a lifetime 
     for (year in 1:ob@years.per.run) {
@@ -162,29 +158,15 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
       crop.coop   <- crop.coop.start * global.wisdom;
       crop.seed   <- ob@crop.seed.start * global.wisdom;  
 
-
-      # Define rainfall matrices for all societies
-      # This is a benefit of simulating all 32 societies at once:
-      # environmental conditions are controlled for
+      Rainfall(state);  # Rain on the societies
       
-      # These could be moved into the MECHANISM state
-      a.rainfall  <- matrix(runif(ob@agents), 1, ob@agents) * ob@max.rain.ratio; 
-      b.rainfall  <- matrix(runif(ob@agents), 1, ob@agents) * ob@max.rain.ratio; 
-				                     
       for (soc in 1:ob@societies) {
         # Information transmission
         InfoTransmission(state, soc, ob@annual.wisdom.gain)
         
         
-        # Grow crops (note the RCC violation in the use of private data fields)
-        # TODO: consider moving any code with private data L-values into Mechanism.R
-        # private data R-values could be returned by a member function
-        state$.a[soc, ] <- a.rainfall * state$.wisdom[soc, ]  * a.seed.exists * crop.target;
-        state$.b[soc, ] <- b.rainfall * state$.wisdom[soc, ]  * b.seed.exists * crop.target;
+        GrowCrops(state, soc, crop.target)
         
-        # Calculate famines (the summation trick to turn TRUE to 1 works in MATLAB and R!)
-        a.famines[[run, soc]] <- a.famines[[run, soc]] + sum(a.seed.exists == 0);
-        b.famines[[run, soc]] <- b.famines[[run, soc]] + sum(b.seed.exists == 0);
       
         # Economies of scale
         crop.weight <- crop.target * ob@max.harvest.ratio;
@@ -194,7 +176,7 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         # Self binding. If some fields have unsustainable yield, we have a tragedy
         # of the commons and have to decrease the other fields.
         SelfBinding(state, soc, ".a", crop.sust)    # N-player prosoner's dilemma if no S
-        SelfBinding(state, soc, ".b", crop.sust)
+        SelfBindingJM(state, soc, ".b", crop.sust)  # JM's externality otherwise
         
         # Risk pool mechanism. The insurance adjustor shows up only if present
         RiskPooling(state, soc, ".a", crop.seed)
@@ -206,27 +188,23 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         # Compute profit after running mechanisms of cooperative benefit
         ComputeProfit(state, soc, crop.seed)
       
-        # Bury the dead
-        a.seed.exists <- state$.a[soc, ] >= crop.seed  # boolean vector
-        b.seed.exists <- state$.b[soc, ] >= crop.seed  # boolean vector
-        dead.agents <- which( ! (a.seed.exists | b.seed.exists) ); # index the dead
-        
-        if (length(dead.agents) > 0) { 
-           for (corpse in dead.agents) {  
-             # Crucifixus 
-             deaths[[run, soc]] <- deaths[[run, soc]] + 1;  
-             # He was crucified under Pontius Pilate. 
-             # Note the private data field here
-             dead.profit[[run, soc]] <- dead.profit[[run, soc]] + state$.profit[[soc,corpse]]
-	     # print(state$.dead.profit[[soc]])
-             # He suffered and was buried.
-             state$.profit[[soc, corpse]] <- 0   # the dead go fast
-             # reset the crops to the crop.target for the next farmer
-             state$.a[[soc, corpse]] <- crop.target;
-             state$.b[[soc, corpse]] <- crop.target;
-             # leave the wisdom intact. JM says this is for simplicity
-             a.seed.exists[[corpse]] <- TRUE;  # Et Resurrexit!
-             b.seed.exists[[corpse]] <- TRUE;  
+        # Crucifixus 
+        # He was crucified under Pontius Pilate. 
+        # He suffered and was buried.
+	      dead.agents <- Crucifixus(state, soc, crop.seed)  # list bankrupted agents
+
+        # Calculate famines 
+        a.famines[[run, soc]] <- a.famines[[run, soc]] + Famines(state, soc, "a.seed.exists");
+        b.famines[[run, soc]] <- b.famines[[run, soc]] + Famines(state, soc, "b.seed.exists");
+	
+	      num.dead    <- length(dead.agents)          # count them
+        print(paste("run:", run, "year:", year, "soc:", soc, TersiLegend(soc), "deaths:", num.dead))
+        if (num.dead > 0) { 
+	        deaths[[run, soc]] <- deaths[[run, soc]] + num.dead
+          for (corpse in dead.agents) {  
+            dead.profit[[run, soc]] <- dead.profit[[run, soc]] 
+	                                    + AgentProfit(state, soc, corpse)
+	          EtResurrexit(state, soc, corpse, crop.target)
           }  # for           
         }  # if
        
