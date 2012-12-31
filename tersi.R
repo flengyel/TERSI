@@ -1,6 +1,7 @@
-# Translation of Jakke Makela's TERSI simulation to R. 
-#
-# Translation by Florian Lengyel. Sept-Oct 2012
+# Translation of MATLAB code by Jakke Makela by Florian Lengyel. Sept-Oct 2012
+# The code is a joint project of Florian Lengyel and Jakke Makela. Makela
+# wrote the original MATLAB code based on discussions with Lengyel, who 
+# translated the simulation to R. Lengyel currently maintains the code.
 
 # The simulation is motivated by Joseph Heath's  typology of mechanisms of 
 # cooperative benefit (Heath, Joseph. The Benefits of Cooperation. 
