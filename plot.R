@@ -42,7 +42,7 @@ return(paste("TERSI Simulation\n",
 
 hobbes <- function(ob, mech) {
   return((ob@stats$current.profit[ , mech] 
-          + ob@stats$dead.profit[ , mech]) / (ob@stats$deaths[ , mech] + 1))
+          + ob@stats$dead.profit[ , mech]) / (ob@stats$deaths[ , mech] + ob@stats$a.famines[ , mech] + ob@stats$b.famines[ ,mech] + 1))
 }
 
 setGeneric("plot")

@@ -278,6 +278,43 @@ setMethodS3("SelfBindingJM", "MECHANISM", function(this, soc, crop, sust, ...) {
 })
 
 
+setMethodS3("SelfBindingLaissezFaire", "MECHANISM", function(this, soc, crop, sust, ...) {
+  # if the self-binding mechanism holds, a tragedy of the commons is averted,
+  # and no one produces above the sustainability limit. If the self-binding mechanism 
+  # does not hold, the defectors, defined as those agents over the sustainability limit, 
+  # impose an externality on the cooperators. If the cooperators can pay, the defectors
+  # keep their produce. If not, the j-th defector receives sust + v
+  # play an n-player prisoner's dilemma in which defectors each receive a fraction
+  # of the sustainable amount and the total proceeds of the cooperators. The fraction
+  # is the reciprocal of the number of defectors. It pays to be the sole defector.
+  # If all are defectors, they undermine each other.
+  
+  v <- this[[crop]][soc, ]
+  if (.HasMechanism(soc, kS)) {
+    v[v > sust] <- sust   # truncate crop to sustainable level
+  }    
+  else { # potential tragedy of the commons
+    num.defectors <- sum(v > sust)  # count the number of defectors
+    if ( num.defectors > 0 ) { # compute the externality
+      defector.gains <- sum(v[v>sust])
+      externality <- defector.gains - num.defectors * sust
+      earned <- sum(v[v<=sust])
+      if (externality <= earned) {
+        # the cooperators can afford the externality
+        v[v<=sust] <- v[v <= sust]*(1 - externality/earned) 
+      }
+      else {
+        # the cooperators can't pay. They go broke and the defectors
+        # fight it out
+        v[v > sust] <- sust + v[v > sust] * earned/defector.gains
+        v[v <= sust] <- 0  # wipe out the cooperators
+        
+      }
+    }
+  }# tragedy of the commons  
+  this[[crop]][soc, ] <- v    # update the result 
+})
+
 
 setMethodS3("ComputeProfit", "MECHANISM", function(this, soc, crop.seed, ...) {
 # update the profit matrix for each agent of the society
