@@ -1,18 +1,15 @@
 # TERSI: agent-base simulation of cooperative behavior based on Heath's typology of mechanisms of cooperative benefit #
 ## AuthorsA ##
-Florian Lengyel 
-CUNY Environmental CrossRoads Initiative
-Department of Civil Engineering
-The City College of New York
-160 Convent Avenue, NY 10023
+* Florian Lengyel  [CUNY Environmental CrossRoads Initiative](http://asrc.cuny.edu/crossroads), [Advan
+ced Science Research Center](http://asrc.cuny.edu)
 
-Jakke Makela
+* Jakke Makela
+
 
 ## Abstract ##
-In "The Benefits of Cooperation," Joseph Heath proposed a typology
-of five sui generis mechanisms of cooperative behavior: gain from 
-Trade in competitive markets, Economies of scale, Risk pools, Self binding and 
-Information transmission.  TERSI is an approach 
+In "The Benefits of Cooperation," Joseph Heath proposed a typology of five sui generis 
+mechanisms of cooperative behavior: gain from Trade in competitive markets, Economies of scale, 
+Risk pools, Self binding and Information transmission.  TERSI is an approach 
 to agent-based simulation of simple societies which takes Heath's typology of mechanisms of 
 cooperative benefit as the basis for the explicit specification  of cooperative behavior of 
 simulated agents, and in which mechanisms can be selectively enabled and disabled to gauge 
@@ -61,4 +58,10 @@ This raises the question of the formal definability of mechanisms of cooperative
 the question whether Heath's fivefold typology is provably exhaustive.
 
 
-   
+## License ##
+
+(c) 2012, Florian Lengyel (florian dot lengyel at gmail dot com) and 
+Jakke Makela (jakke dot makela at gmail dot com).
+The text is licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported (CC B
+Y-NC-SA-3.0)  license](http://creativecommons.org/licenses/by-nc-sa/3.0/).  The code is licensed 
+under the GNU General Public License, version 2.

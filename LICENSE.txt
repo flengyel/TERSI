@@ -1,0 +1,8 @@
+(c) 2012, Florian Lengyel florian.lengyel@gmail.com, Jakke Makela jakke.makela@gmail.com
+The text is licensed under a Creative Commons 
+Attribution-NonCommercial-ShareAlike 3.0 Unported (CC BY-NC-SA-3.0)  
+license. http://creativecommons.org/licenses/by-nc-sa/3.0/.  
+The code is licensed under the GNU General Public License, version 2. 
+The original MATLAB code was written in MATLAB by Jakke Makela. The
+translation to R and subsequent modification was by Florian Lengyel.
+
