@@ -1,12 +1,19 @@
-# TERSI: agent-base simulation of cooperative behavior based on Heath's typology of mechanisms of cooperative benefit #
-## AuthorsA ##
+# TERSI #
+Simulation of artificial societies  based on Heath's typology of mechanisms of cooperative benefit
+
+## Authors ##
 * Florian Lengyel  [CUNY Environmental CrossRoads Initiative](http://asrc.cuny.edu/crossroads), 
 [Advanced Science Research Center](http://asrc.cuny.edu)
 
 * Jakke Makela
 
+### Keywords ###
 
-## Abstract ##
+agent-based simulation; cooperative benefit; gain from trade; economies of scale; risk pools; self binding; information transmission.
+
+
+## Overview ##
+
 In "The Benefits of Cooperation," Joseph Heath proposed a typology of five sui generis 
 mechanisms of cooperative behavior: gain from Trade in competitive markets, Economies of scale, 
 Risk pools, Self binding and Information transmission.  TERSI is an approach 
@@ -19,37 +26,30 @@ than those in which fewer mechanisms operate.  They also show that each of the f
 exhibit diminishing returns and trade off against each other. Trade-offs among
 cooperative benefits are highly interrelated and exhibit non-linearity. 
 
-### Keywords ###
 
-agent-based simulation; cooperative benefit; gain from trade; economies of scale; risk pools; self binding; information transmission.
-
-
-## Overview ##
-
-The code provided can simulate a simple society of nine zero-knowledge agents, in which 
-five kinds of cooperarive benefit are specified algorithmically, and in which each of 
-the five mechanisms of cooperative benefit could be enabled or disabled, and individually 
-parametrized.  The simulation runs through each of the 32 possible societies corresponding to the 
-mechanisms of cooperative benefit, designated by T, E, R, S and I, respectively.
-Comparisons of welfare measures computed for these societies show that
-societies in which all mechanisms of cooperative benefit are enabled are higher than 
-those in which fewer mechanisms operate.
-They also show that each of the five mechanisms exhibit diminishing returns and
-trade off against each other.
-
-A society for us consists of a configuration of agents, together with a collection of
-mechanisms of cooperative benefit. Given that there are five mechanisms of cooperative benefit, there are 32 societies for a each fixed parametrization of mechanisms and of the environment. 
+The code provided simulates a simple society of nine zero-knowledge agents, in which 
+five kinds of cooperarive benefit are specified algorithmically. 
+The  mechanisms of cooperative benefit are  designated here by T (gain from trade), 
+E (economies of scale), R (risk pools), S (self binding) and I (information transmission), 
+respectively.  A society for us consists of a configuration of agents, together with a 
+collection of mechanisms of cooperative benefit. Given five mechanisms of cooperative benefit, 
+there are 32 societies for  each fixed parametrization of mechanisms and of the environment. 
 The environment of the simulated agents is simulated during each run in advance of the 
 activities of the agents, which are controlled by the mechanisms enabled for each of
-the 32 societies. In the current model there are environmental forcings on agent behavior
-but agent behaviors does not affect the environment.
+the 32 societies. In the current model there are environmental forcings on agent behavior;
+agent behavior does not affect the environment.  Fixed simulation parameters are defined in 
+an R S4 object of class TERSI. (One such user-specifiable parameter is the number of agents.) 
+The simulation itself is stored as an  object of type TERSI for subsequent analysis.  
+Mutable simulation state is maintained in an R S3 object of class SIMULATION as the 
+simulation runs. 
+
 
 
 We take cooperation for granted in these simulations.  In evolutionary game-theoretic simulation, 
 cooperation emerges as an evolutionarily stable strategy in a repeated non-cooperative game. 
 Cooperative behavior is interpreted in this approach as the choice of a mutually beneficial strategy 
 profile in a non-cooperative game such as prisoners' dilemma, for which non-cooperation is the 
-dominant strategy according to some solution concept such as Nash-equilibrium . 
+dominant strategy according to some solution concept such as Nash-equilibrium. 
 
 Our specification of mechanisms of cooperative benefit is plausible, but ad hoc. Game-theory 
 based simulations define cooperation in terms of payoff functions, but leave the mechanism of
@@ -61,12 +61,6 @@ the question whether Heath's fivefold typology is provably exhaustive.
 ## License ##
 
 (c) 2012, Florian Lengyel (florian dot lengyel at gmail dot com) and 
-Jakke Makela (jakke dot makela at gmail dot com).
-The text is licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported (CC B
-Y-NC-SA-3.0)  license](http://creativecommons.org/licenses/by-nc-sa/3.0/).  The code is licensed 
-under the GNU General Public License, version 2.
-=======
-TERSI
-=====
+Jakke Makela (jakke dot makela at gmail dot com).  The text is licensed under a 
+[Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported (CC BY-NC-SA-3.0) license](http://creativecommons.org/licenses/by-nc-sa/3.0/).  The code is licensed under the GNU General Public License, version 2.
 
-TERSI: simulation of artificial societies  based on Heath's typology of mechanisms of cooperative benefit
