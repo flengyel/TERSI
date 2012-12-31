@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # TERSI: agent-base simulation of cooperative behavior based on Heath's typology of mechanisms of cooperative benefit #
 ## AuthorsA ##
 * Florian Lengyel  [CUNY Environmental CrossRoads Initiative](http://asrc.cuny.edu/crossroads), [Advan
@@ -65,3 +66,9 @@ Jakke Makela (jakke dot makela at gmail dot com).
 The text is licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported (CC B
 Y-NC-SA-3.0)  license](http://creativecommons.org/licenses/by-nc-sa/3.0/).  The code is licensed 
 under the GNU General Public License, version 2.
+=======
+TERSI
+=====
+
+TERSI: simulation of artificial societies  based on Heath's typology of mechanisms of cooperative benefit
+>>>>>>> 4f3775571282e58d9a9de4e44536fe51a25c6177
