@@ -22,7 +22,7 @@ Our simulations  show that welfare measures of societies in which all mechanisms
 The code provided simulates a simple society of nine zero-knowledge agents, in which five kinds of cooperarive benefit are specified algorithmically.  The  mechanisms of cooperative benefit are designated here by **T** (gain from trade), **E** (economies of scale), **R** (risk pools), **S** (self binding) and **I** (information transmission), respectively.  A society for us consists of a configuration of agents, together with a collection of mechanisms of cooperative benefit. Given five mechanisms of cooperative benefit, there are 32 societies for  each fixed parametrization of mechanisms and of the environment.  The environment of the simulated agents is simulated during each run in advance of the activities of the agents, which are controlled by the mechanisms enabled for each of the 32 societies.  In the current model there are environmental forcings on agent behavior; agent behavior does not affect the environment.  
 
 
-Fixed simulation parameters are defined in an R S4 object of class `TERSI`.  (One such user-specifiable parameter is the number of agents.) The simulation itself is stored as an  object of type TERSI for subsequent analysis.  Mutable simulation state is maintained in an R S3 object of class `SIMULATION` as the simulation runs. 
+Fixed simulation parameters are defined in an R S4 object of class `TERSI`.  (One such user-specifiable parameter is the number of agents.) The simulation itself is stored as an  object of type `TERSI` for subsequent analysis.  Mutable simulation state is maintained in an R S3 object of class `SIMULATION` as the simulation runs. 
 
 We take cooperation for granted in these simulations. In evolutionary game-theoretic simulation, cooperation often emerges as an evolutionarily stable strategy in a repeated non-cooperative game.  Cooperative behavior is interpreted in this approach as the choice of a mutually beneficial strategy profile in a non-cooperative game such as prisoners' dilemma, for which non-cooperation is the dominant strategy according to some solution concept such as Nash-equilibrium. 
 
@@ -56,5 +56,5 @@ Individual mechanisms of cooperative benefit other than **R** exhibit high varia
 
 ## License ##
 
-(c) 2012, Florian Lengyel (florian dot lengyel at gmail dot com) and Jakke Makela (jakke dot makela at gmail dot com).  The text is licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported (CC BY-NC-SA-3.0) license](http://creativecommons.org/licenses/by-nc-sa/3.0/).  The code is licensed under the GNU General Public License, version 2.
+(c) 2012, Florian Lengyel (flengyel at ccny dot cuny dot edu) and Jakke Makela (jakke dot makela at gmail dot com).  The text is licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported (CC BY-NC-SA-3.0) license](http://creativecommons.org/licenses/by-nc-sa/3.0/).  The code is licensed under the GNU General Public License, version 2.
 
