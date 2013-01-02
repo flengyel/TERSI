@@ -73,7 +73,8 @@ is provably exhaustive.
 ## Running the simulation ##
 ```R
 > source("tersi.R")
-> x <- new("TERSI", crop.target.start=7, max.sust.ratio=1.2, runs=50, agents=25)[1] "Running simulation."
+> x <- new("TERSI", crop.target.start=7, max.sust.ratio=1.2, runs=50, agents=25)
+[1] "Running simulation."
 [1] "Run number:1"
 [1] "run: 1 year: 1 soc: 1 O deaths: 7"
 [1] "run: 1 year: 1 soc: 2 T deaths: 7"
