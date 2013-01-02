@@ -1,0 +1,43 @@
+
+function WorldOut=TContract(WorldIn,seed,Ratio);
+%Make trades, try to balance A and B.
+%Only a maximum number of crops can be changed, in order of profit
+
+WorldOut=WorldIn;
+
+Ain=WorldIn.A;
+Bin=WorldIn.B;
+Profit=WorldIn.Profit;  %Trades made in order of cumulative profit.
+
+%debug: sum 90
+
+croplen=length(Ain);
+Delta=Ain-Bin;
+MaximumTrades=sum(abs(Delta))*Ratio;
+TradesDone=0;
+for ind1=1:(croplen-1);
+    for ind2=(ind1+1):croplen;
+        if sign(Delta(ind1)*sign(Delta(ind2)))==-1; %Only switch if sign different
+            chmax=min([abs(Delta(ind1)),abs(Delta(ind2))]);   %Ain(ind1)-seed, Ain(ind2)-seed,Bin(ind1)-seed,Bin(ind2)-seed]);
+            sg=sign(Delta(ind1)); dx=chmax/2;
+            %Determine if trade Ok for everyone
+            goahead=( (Ain(ind1)-dx>0)&&(Bin(ind1)+dx>0)&&(Ain(ind2)-dx>0)&&(Bin(ind2)+dx>0) );
+            if goahead;
+                %Never go bankrupt
+                Ain(ind1)=Ain(ind1)-dx;
+                Bin(ind1)=Bin(ind1)+dx;
+                Ain(ind2)=Ain(ind2)-dx;
+                Bin(ind2)=Bin(ind2)+dx;
+                Delta=Ain-Bin;
+                TradesDone=TradesDone+abs(chmax);
+                %Ain',Bin',TradesDone, input('Press Return');
+                if TradesDone>=MaximumTrades; break;end; %If trades still possible
+            end;
+        end;
+    end;
+    if TradesDone>=MaximumTrades; break;end; %If trades still possible
+
+end;
+
+WorldOut.A=Ain;
+WorldOut.B=Bin;

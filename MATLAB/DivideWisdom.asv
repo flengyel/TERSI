@@ -1,0 +1,17 @@
+
+function Wout=DivideWisdom(Win,wisdomadded,contractinplace);
+%Version 1.0.7
+%If no contract, everyone gets at rand()*wisdomadded
+%If in contract, everyone gets wisdomadded
+
+
+
+increases=rand(length(Win),1);
+maxwisdom
+if contractinplace;  %Everyone gets the maximum wisdom
+    increases=ones(length(Win),1)* wisdomadded /length(Win); %Full wisdom, every year
+else;  %Divide the wisdom randomly
+    increases=(increases./sum(increases))*wisdomadded*rand();
+    %Wisdom might not increase at all
+end;
+Wout=Win+increases;

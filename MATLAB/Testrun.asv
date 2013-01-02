@@ -1,0 +1,12 @@
+ 
+
+for ii=1:100;
+
+Win.A=round(rand(10,1)*9); Win.B=round(rand(10,1)*9); Wout=TContract(Win,1,0.5); 
+
+%%(Wout.A-Wout.B)./(Win.A-Win.B)
+sum(W
+
+input('Press Enter')
+
+end;
