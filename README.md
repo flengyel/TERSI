@@ -70,6 +70,22 @@ This raises the question of the formal definability of mechanisms of
 cooperative benefit, and the question whether Heath's fivefold typology 
 is provably exhaustive.
 
+## Running the simulation ##
+```R
+> source("tersi.R")
+> x <- new("TERSI", crop.target.start=7, max.sust.ratio=1.2, runs=50, agents=25)[1] "Running simulation."
+[1] "Run number:1"
+[1] "run: 1 year: 1 soc: 1 O deaths: 7"
+[1] "run: 1 year: 1 soc: 2 T deaths: 7"
+[1] "run: 1 year: 1 soc: 3 E deaths: 4"
+[1] "run: 1 year: 1 soc: 4 TE deaths: 4"
+[1] "run: 1 year: 1 soc: 5 R deaths: 0"
+[1] "run: 1 year: 1 soc: 6 TR deaths: 0"
+[1] "run: 1 year: 1 soc: 7 ER deaths: 0"
+[1] "run: 1 year: 1 soc: 8 TER deaths: 0"
+[1] "run: 1 year: 1 soc: 9 S deaths: 0"
+```
+
 ## Sample output ##
 The following plot shows measures of welfare computed for seven combinations
 of mechanisms. The measure computed is the Hobbes Index: the total profit

@@ -1,8 +1,9 @@
 # Mechanisms of cooperative benefit. 
-# Adapted from Jakke Makela's TERSI simulation by Florian Lengyel. R.oo classes are used 
-# to enable passing the state of the simulation by reference to avoid copying large data 
-# structures, and to facilitate modification of them. (S4 objects are immutable unless 
-# replacement methods are defined, which introduces lexical ceremony and computational overhead.)
+# Adapted from Jakke Makela's TERSI simulation by Florian Lengyel. 
+# R.oo classes are used  to enable passing the state of the simulation 
+# by reference to avoid copying large data #structures, and to facilitate 
+# modification of them. (S4 objects are immutable unless replacement methods 
+# are defined, which introduces lexical ceremony and computational overhead.)
 
 library(R.oo)
 library(bitops)
@@ -111,7 +112,7 @@ setMethodS3("AgentProfit", "MECHANISM", function(this, soc, agent, ...) {
 
 
 
-setMethodS3("Crucifixus", "MECHANISM", function(this, soc, crop.seed, ...) {
+setMethodS3("Bankrupt", "MECHANISM", function(this, soc, crop.seed, ...) {
 # List indices of bankrupted agents
 # Args:
 #   this: this S3 object

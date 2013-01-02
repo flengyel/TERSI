@@ -12,13 +12,6 @@
 # URL: http://google-styleguide.googlecode.com/svn/trunk/google-r-style.html
 # The first rule we attempt to follow is the 80 character maximum line length. 
 #
-#2345678901234567890123456789012345678901234567890123456789012345678901234567890
-#        1         2         3         4         5         6         7         8
-#
-# During development, we follow Cory Doctorow's advice to insert TK in 
-# comments for facts we should look up and replace in the future. (TK is a 
-# combination that rarely comes up in text searches, so journlists use it.)
-#
 # The Google Style Guide recommends using S3 classes instead of S4 classes 
 # unless there is a justification. My justification for S4 classes is 
 # that I know more about S4 classes than S3 classes. They are used to store
@@ -190,10 +183,8 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
         # Compute profit after running mechanisms of cooperative benefit
         ComputeProfit(state, soc, crop.seed)
       
-        # Crucifixus 
-        # He was crucified under Pontius Pilate. 
-        # He suffered and was buried.
-	      dead.agents <- Crucifixus(state, soc, crop.seed)  # list bankrupted agents
+	# List bankrupted agents
+	dead.agents <- Bankrupt(state, soc, crop.seed)  
 
         # Calculate famines 
         a.famines[[run, soc]] <- a.famines[[run, soc]] + Famines(state, soc, "a.seed.exists");
