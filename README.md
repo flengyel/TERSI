@@ -1,5 +1,5 @@
 # TERSI #
-Simulation of artificial societies  based on Heath's typology of mechanisms of cooperative benefit
+Simulation of institutions via Heath's typology of mechanisms of cooperative benefit
 
 ## Authors ##
 * Florian Lengyel  [CUNY Environmental CrossRoads Initiative](http://asrc.cuny.edu/crossroads), 
