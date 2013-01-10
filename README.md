@@ -49,11 +49,11 @@ Simulations may be saved to disk with the generic method `save()`.
 ```R
 save(x, "MyFilename")
 ```
-The `save()` method calls saveRDS() and will print an error message if an error is caught.
+The `save()` method calls `saveRDS()` and will print an error message if an error is caught.
 
 ### TERSI constructor arguments ###
-The TERSI object constructor arguments have the following default parameters. These may
-be overriden.
+The TERSI object constructor arguments have the following default parameters. 
+These may be overriden.
 
 ```R
 new ("TERSI", filename="", 
@@ -69,9 +69,10 @@ new ("TERSI", filename="",
      agents = 9)
 ```
 
-If the `filename` argument is used, it should be set to the name of a serialzed `TERSI` filesystem 
-object previously saved using the generic method `save()`. The `TERSI` constructor will attempt 
-to read the named file and will print an error message if an error is caught.
+If the `filename` argument is used, it should be set to the name of a 
+serialzed `TERSI` filesystem object previously saved using the generic 
+method `save()`. The `TERSI` constructor will attempt to read the named 
+file using `readRDS()` and will print an error message if an error is caught.
 
 ### Plotting functions ###
 Source the file `plot.R`. This section of the documentation is under development.
