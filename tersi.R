@@ -232,6 +232,7 @@ setMethod("Simulate", signature=signature(ob="SIMULATION"), definition=function(
 
 setClass("TERSI", contains = "SIMULATION",
 	 representation = representation(stats = "list",
+					 filename = "character",
 					 palette = "character"))
 
 setMethod("initialize","TERSI", function(.Object, filename="", 
@@ -246,7 +247,7 @@ setMethod("initialize","TERSI", function(.Object, filename="",
 			    max.sust.ratio = max.sust.ratio,
 			    max.harvest.ratio = max.harvest.ratio,
 			    trade.ratio = trade.ratio,
-          runs = runs,
+                            runs = runs,
 			    years.per.run = years.per.run,
 			    max.rain.ratio = max.rain.ratio,
 			    crop.seed.start = crop.seed.start,
@@ -262,9 +263,24 @@ setMethod("initialize","TERSI", function(.Object, filename="",
     .Object@stats <- Simulate(.Object); # set the simulation statistics
   }
   else {
-     print(paste("Loading pre-computed simulation statistics from:", filename));
-    .Object@stats <- list();  # do nothing for now
+    print(paste("Reading pre-computed simulation statistics from:", filename));
+    maybe.error <- tryCatch(.Object <- readRDS(filename), error=function(e) e);
+    if (inherits(maybe.error, "error")) {
+      print(paste("Error reading file: ", filename));
+    }
+    else { # set the filename      
+      .Object@filename <- filename # filename set when serialized object is instantiated
+      # the filename is not stored with the object when it is saved to disk
+    }
   }
   return (.Object);  # return the initialized object
 }) 
 
+
+setGeneric("save", function(ob, ...) standardGeneric("save"))
+
+setMethod("save", signature=signature(ob="TERSI"), definition=function(ob, filename) {
+  maybe.error <- tryCatch(saveRDS(ob, filename), error=function(e) e)
+  if (inherits(maybe.error,"error"))
+    print(paste("Error saving file: ", filename));
+})
