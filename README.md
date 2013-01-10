@@ -46,7 +46,8 @@ Source the file `tersi.R`. Creation of a new `TERSI` object will run a simulatio
 [1] "run: 1 year: 1 soc: 9 S deaths: 0"
 ```
 Simulations may be saved to disk with the generic method `save()`.
-```save(x, "MyFilename")
+```R
+save(x, "MyFilename")
 ```
 The `save()` method calls saveRDS() and will print an error message if an error is caught.
 
@@ -54,17 +55,18 @@ The `save()` method calls saveRDS() and will print an error message if an error 
 The TERSI object constructor arguments have the following default parameters. These may
 be overriden.
 
-```new ("TERSI", filename="", 
-        crop.target.start = 10, 
-        max.sust.ratio = 1.3, 
-        max.harvest.ratio = 1.5, 
-        trade.ratio = 0.5, 
-        runs = 100, 
-        years.per.run = 100, 
-        max.rain.ratio = 2, 
-        crop.seed.start = 1, 
-        wisdom.start = 1, 
-        agents = 9)
+```R
+new ("TERSI", filename="", 
+     crop.target.start = 10, 
+     max.sust.ratio = 1.3, 
+     max.harvest.ratio = 1.5, 
+     trade.ratio = 0.5, 
+     runs = 100, 
+     years.per.run = 100, 
+     max.rain.ratio = 2, 
+     crop.seed.start = 1, 
+     wisdom.start = 1, 
+     agents = 9)
 ```
 
 If the `filename` argument is used, it should be set to the name of a serialzed `TERSI` filesystem 
