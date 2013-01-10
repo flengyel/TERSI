@@ -45,6 +45,34 @@ Source the file `tersi.R`. Creation of a new `TERSI` object will run a simulatio
 [1] "run: 1 year: 1 soc: 8 TER deaths: 0"
 [1] "run: 1 year: 1 soc: 9 S deaths: 0"
 ```
+Simulations may be saved to disk with the generic method `save()`.
+```save(x, "MyFilename")
+```
+The `save()` method calls saveRDS() and will print an error message if an error is caught.
+
+### TERSI constructor arguments ###
+The TERSI object constructor arguments have the following default parameters. These may
+be overriden.
+
+```new ("TERSI", filename="", 
+        crop.target.start = 10, 
+        max.sust.ratio = 1.3, 
+        max.harvest.ratio = 1.5, 
+        trade.ratio = 0.5, 
+        runs = 100, 
+        years.per.run = 100, 
+        max.rain.ratio = 2, 
+        crop.seed.start = 1, 
+        wisdom.start = 1, 
+        agents = 9)
+```
+
+If the `filename` argument is used, it should be set to the name of a serialzed `TERSI` filesystem 
+object previously saved using the generic method `save()`. The `TERSI` constructor will attempt 
+to read the named file and will print an error message if an error is caught.
+
+### Plotting functions ###
+Source the file `plot.R`. This section of the documentation is under development.
 
 ## Sample output ##
 The following plot shows measures of welfare computed for seven combinations of mechanisms. The measure computed is the Hobbes Index: the total profit accumulated by all agents, dead or alive, during each run of the simulation, divided by the number of deaths during each run. Each run lasts 100 years. The plot shows that enabling risk pools **R** alone is consistently more stable than enabling gain from trade, economies of scale and self binding **TES**. **TERSI** dominates all other combinations of mechanisms.
