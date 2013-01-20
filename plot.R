@@ -4,9 +4,9 @@
 library(ggplot2)
 library(methods)
 library(bitops)
+library(reshape)
 
-
-
+options(error=utils::recover)
 
 profit <- function(sim, mech) {
   total.profit <-  sim@stats$current.profit[ , mech] 
@@ -116,3 +116,27 @@ setMethod("plot",
   }
     
 })
+
+
+# dangerous! setGeneric("density")
+# Lowercase density() wants its first argument to be numeric.
+
+setGeneric("Density", function(ob,...) standardGeneric("Density") )
+
+setMethod("Density", signature=signature(ob="TERSI"), definition=function(ob) {
+  df <- data.frame(R=hobbes(ob,1+kR), 
+		   TES=hobbes(ob,1+kT+kE+kS),
+		   TERSI=hobbes(ob,1+kT+kE+kR+kS+kI))
+
+  mdf <- melt(df, variable="Mechanism", value=value, value.name="Hobbes Index");
+  cdf <- ddply(mdf, .(Mechanism), summarise, hobbes.mean=mean(value));
+
+  ggplot(data=mdf, aes(x=value, fill=Mechanism)) +
+    geom_vline(data=cdf, 
+	       aes(xintercept=hobbes.mean, color=Mechanism), 
+               linetype="dashed",size=1) +
+    xlab("Hobbes Index") +
+    labs(title=.sim.title(ob))+
+    geom_density(alpha=.3); 
+}) 
+
